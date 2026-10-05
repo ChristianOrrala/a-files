@@ -1,6 +1,6 @@
 {
   "name": "a-files",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "The A-files: five files every coding agent reads first (rules, current work, abilities, what is ahead, the map), with the skill that adopts and keeps them, their check, its git hook and a check of every reference to what moves.",
   "author": {"name": "Christian Orrala", "url": "https://github.com/ChristianOrrala"},
   "license": "MIT",

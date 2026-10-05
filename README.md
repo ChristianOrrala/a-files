@@ -6,7 +6,7 @@ A way for a repository to keep its rules, its current work, its abilities,
 its future and its map in five Markdown files at the root (`AGENTS.md`,
 `ACTIVE.md`, `ABILITIES.md`, `AHEAD.md`, `ATLAS.md`), so that every coding
 agent and every person starts each session from the same picture, and the
-picture stays true. Version 1.2.1.
+picture stays true. Version 1.2.2.
 
 ## What is in it
 

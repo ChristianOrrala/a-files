@@ -2,6 +2,12 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 1.2.2
+
+- The pairing contract (P4): a recovery change log entry decided later
+  becomes an AHEAD item that cites it; the entries of one use case share one
+  item.
+
 ## 1.2.1
 
 The first public release. Earlier versions were internal.
