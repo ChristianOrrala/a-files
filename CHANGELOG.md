@@ -2,6 +2,12 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 1.2.3
+
+- The README is rewritten: the problem the files solve, a table of the five
+  files, how they work, install steps for Claude Code, Codex and other agents,
+  example prompts, and the manual steps in order.
+
 ## 1.2.2
 
 - The pairing contract (P4): a recovery change log entry decided later
