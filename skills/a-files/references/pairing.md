@@ -40,7 +40,7 @@ there is none). The keep-in-step list gains, before its last item:
 **P5.** The map table of `ATLAS.md` gains one row, with paths in backticks only
 for what exists:
 
-    | Specifications | What the system does, written before it is built | `docs/vision.md`, `docs/use_cases/`, `docs/test_cases/` | — | the validator and the lint of the specification skills |
+    | Specifications | What the system does, written before it is built | `docs/vision.md`, `docs/use_cases.md`, `docs/use_cases/`, `docs/test_cases/` | — | the validator and the lint of the specification skills |
 
 With another method, the row names that method's folder.
 

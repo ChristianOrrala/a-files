@@ -2,6 +2,17 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 1.2.4
+
+- The pairing contract names the use case overview `docs/use_cases.md`
+  and the short change record.
+- Specification fixtures use the current formats: front matter, the
+  generated Mermaid overview, Examples tables and the short change record.
+
+**How to migrate:** Update the plugin. In a paired specification project,
+  ask the specification agent to move the specs to the current formats;
+  the A-files and their Specs links keep the same identifiers and paths.
+
 ## 1.2.3
 
 - The README is rewritten: the problem the files solve, a table of the five

@@ -10,7 +10,7 @@ The A-files split that job into five short Markdown files at the repository's
 root. Every agent and every person starts from the same picture, and a check
 before each commit keeps that picture in shape.
 
-**Version 1.2.3.**
+**Version 1.2.4.**
 
 ## The five files
 
