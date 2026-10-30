@@ -30,7 +30,7 @@ Below: Parts in detail, How to maintain this file.
 - Update it in the same commit that adds, moves, renames or removes a part.
 - "Parts in detail" holds only what a row cannot say: data flow, invariants,
   pitfalls.
-- The check (`tools/check_tracking.py`) refuses a path in the map that points
+- The check (`tools/check_tracking.py`) reports a path in the map that points
   at nothing.
 
 Template: this file as it stands, with the placeholders in angle brackets.

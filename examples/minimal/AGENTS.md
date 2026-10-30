@@ -18,7 +18,7 @@ Open anything else only when the task needs it; the index says where it is.
 
 | File | Holds | Updated |
 |---|---|---|
-| `ACTIVE.md` | The work in progress and what blocks new work | At every session end |
+| `ACTIVE.md` | The current piece of work, what is pending in it and what blocks it | At every session end |
 | `ABILITIES.md` | Every ability of the product: planned, in progress, done, retired | When an ability changes state |
 | `AHEAD.md` | Everything not started: next up, milestones, ideas, research, spikes | When an item is proposed, approved, scheduled or dropped |
 | `ATLAS.md` | The architecture map: parts, files, dependencies, checks | When a part is added, moved or removed |

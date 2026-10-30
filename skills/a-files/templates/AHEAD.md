@@ -43,8 +43,9 @@ Below: Items, History, How to maintain this file.
 - A new idea, research question, spike or proposal gets the next free
   identifier, an index row with state `open`, and an entry under Items. A long
   write-up goes to `docs/research/` and the row links it.
-- **Approved:** the state becomes `approved` and the item gets its entry in
-  `ABILITIES.md` (status `planned`), named in the Ability column.
+- **Approved:** the state becomes `approved`, and the ability gets its index
+  row in `ABILITIES.md` (status `planned`) and its entry; the item names it in
+  the Ability column.
 - **Scheduled:** the state becomes `next` and the item joins Next up, in order.
 - **Started:** the state becomes `started`, the row moves to History, and the
   work appears in `ACTIVE.md`.
@@ -52,7 +53,7 @@ Below: Items, History, How to maintain this file.
   entry says why and when. Nothing is deleted; identifiers are never reused.
 - Milestones list the items and abilities they include and how we know they
   are reached.
-- The check (`tools/check_tracking.py`) refuses a kind or state outside the
+- The check (`tools/check_tracking.py`) reports a kind or state outside the
   lists, an approved, next or started item without an ability, a link to
   nothing, and a removed identifier.
 

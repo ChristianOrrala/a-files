@@ -4,8 +4,8 @@ description: >-
   Adopts and keeps the A-files, five Markdown files at a repository's root that every coding agent
   reads first: AGENTS.md (rules, warm-up, index), ACTIVE.md (the work in progress), ABILITIES.md
   (what the product can do), AHEAD.md (everything not started) and ATLAS.md (the architecture map),
-  each with a hot zone read at session start, a keep-in-step rule and a check that refuses a commit
-  breaking their shape. Maps existing tracking files (a board, a feature list, a roadmap, notes),
+  each with a hot zone read at session start, a keep-in-step rule and a check that reports at commit
+  time what breaks their shape, never refusing the commit. Maps existing tracking files (a board, a feature list, a roadmap, notes),
   asks whether to move them into the A-files or keep them, and checks every link, import and
   instruction that names what moves. Use when the user wants to adopt the A-files, set up or clean
   up the files agents read at session start, close out a piece of work, promote or schedule an item,
@@ -17,8 +17,8 @@ description: >-
 
 Five files at the root give every agent and every person the same picture at
 the start of a session: the rules, the work in progress, what the product can
-do, what is ahead, and the map. This skill adopts them in a repository and
-keeps them true. The daily rules (the warm-up, keeping the files in step)
+do, what is ahead, and the map. They serve one owner directing agents, not a
+team tracker. This skill adopts them in a repository and keeps them true. The daily rules (the warm-up, keeping the files in step)
 live in the project's `AGENTS.md`, which every tool reads anyway.
 
 The whole method, with its reasons: [references/method.md](references/method.md).
@@ -28,7 +28,7 @@ The whole method, with its reasons: [references/method.md](references/method.md)
 | File | Holds | Hot zone cap |
 |---|---|---|
 | `AGENTS.md` | Rules, warm-up, the index of every file an agent needs, keep in step | 100 lines; the file under 200 |
-| `ACTIVE.md` | The work in progress and what blocks new work | 60 lines |
+| `ACTIVE.md` | The current piece of work, what is pending in it and what blocks it | 60 lines |
 | `ABILITIES.md` | Every ability of the product, planned to retired, never deleted | 100 lines |
 | `AHEAD.md` | Everything not started: Next up, milestones, ideas, research, proposals | 100 lines |
 | `ATLAS.md` | The map: parts, the files they work through, dependencies, checks | 100 lines |
@@ -36,6 +36,19 @@ The whole method, with its reasons: [references/method.md](references/method.md)
 Each opens with its title and a one-line contract (`> ...`). Its hot zone
 ends with the line `<!-- hot zone ends -->`, and everything below is named in
 the hot zone. Identifiers `AB-001` and `AH-001` are never reused or removed.
+An ability's status is written once, in its index row; done abilities may
+move to an index table below the hot zone.
+
+**Small or full.** The small setup keeps `AGENTS.md` and `ACTIVE.md`; the full
+one adds the other three. The check always expects `ACTIVE.md`, and another
+A-file once the index of `AGENTS.md` lists it, the file exists, or it held
+identifiers in the last commit. In the small setup, remove the other three
+files' rows from the index of `AGENTS.md`, and their mentions from the
+warm-up and keep in step. Without `AHEAD.md`, blocked work stays in ACTIVE's
+Pending and Next new work names what the owner chose next. At adoption, a
+feature list, a roadmap or an architecture document has no A-file to go to:
+it stays where it is, or the setup grows to hold it. A small setup grows later: add the file from its template and name
+it in the index.
 
 Templates: [templates/AGENTS.md](templates/AGENTS.md), [templates/ACTIVE.md](templates/ACTIVE.md),
 [templates/ABILITIES.md](templates/ABILITIES.md), [templates/AHEAD.md](templates/AHEAD.md),
@@ -46,7 +59,8 @@ under `templates/docs/` a plan, a decision record and a research write-up.
 ## Adopt
 
 Look before anything moves. Adoption takes two replies. The first surveys,
-shows the mapping and the planned moves (steps 1, 2 and 4), proposes the
+shows the mapping and the planned moves (steps 1, 2 and 4), offers the small
+setup (`AGENTS.md` and `ACTIVE.md`) or the full one, proposes the
 check and the hook (step 6), and ends with the questions; it creates, moves
 and removes nothing and installs no hook. The second applies, after the
 person has answered in a new message. A request to adopt the A-files, or to
@@ -59,8 +73,8 @@ a question. Full alignment settles the instructions that name what moves:
 adapt them to the new home. A decision the request does not settle (a bare
 name it cannot place) stays a question; nothing is guessed. A new
 repository, with no tracking files yet, takes the same two replies: the
-first lists the files it would create from the templates and proposes the
-check and the hook.
+first lists the files it would create from the templates for each setup,
+asks which (small or full, above), and proposes the check and the hook.
 
 1. **Survey.** List the tracking files that exist (status notes, boards,
    feature lists, roadmaps, TODO lists, architecture documents, notes of
@@ -101,8 +115,27 @@ check and the hook.
    `.githooks/pre-commit` or `.git/hooks/pre-commit`, a hook manager (husky,
    pre-commit, lefthook). Never replace a hook: with none, propose
    [scripts/pre-commit](scripts/pre-commit) as `.githooks/pre-commit` and
-   `git config core.hooksPath .githooks`; with one, propose the one line that
-   adds `python3 tools/check_tracking.py` to it. Hooks change how every commit
+   `git config core.hooksPath .githooks`; with one, propose the one line
+   `python3 tools/check_tracking.py --staged || true`, placed before the
+   hook's first command: after the shebang when there is one, at the top when
+   there is none (the check reads what is staged, as the commit will hold
+   it). The added line never decides the hook's result unless a strict check
+   is asked for: the check only reports and exits 0, so as the hook's last
+   line it would decide the result and drop the hook's own refusal. For a
+   strict check, propose `python3 tools/check_tracking.py --staged --strict || exit 1`,
+   placed the same way. The `|| true` and `|| exit 1` lines are for a shell
+   hook. Some hook managers, such as the pre-commit framework, run a step
+   without a shell, so propose a step of its own running
+   `python3 tools/check_tracking.py --staged`, which reports and exits 0, or
+   `python3 tools/check_tracking.py --staged --strict` to refuse; never
+   `|| true` in a step. The step takes no file names, runs on every commit,
+   one that only deletes files included, and shows its output, so the
+   report is seen. For example, the pre-commit framework, in
+   `.pre-commit-config.yaml`: a `repo: local` hook with
+   `entry: python3 tools/check_tracking.py --staged`, `language: system`,
+   `pass_filenames: false`, `always_run: true` and `verbose: true`; for the
+   strict check, `entry: python3 tools/check_tracking.py --staged --strict`.
+   Hooks change how every commit
    behaves, so show the change and install it only after a yes that names it:
    the person's answer, or a request that already says to install the hook.
    Run `python3 tools/check_tracking.py` until it prints nothing.
@@ -120,9 +153,10 @@ In the same commit as the last change of the work:
 
 - `ACTIVE.md`: clear Now (every field stays, with "none" or "—") and name
   the first item of AHEAD's Next up as the next new work. Never invent work.
-- `ABILITIES.md`: the ability becomes `done` in its index row and its entry,
-  with **Evidence** linking the specification, tests or evaluation, and
-  **Known limits** stated.
+- `ABILITIES.md`: the ability becomes `done` in its index row (the status
+  lives there only; its entry gains **Evidence** linking the specification,
+  tests or evaluation, and **Known limits** stated). An older entry that still
+  carries a Status line follows the row, or loses the line.
 - `AHEAD.md`: an item that ended moves to History.
 - `ATLAS.md`, when a part was added, moved or removed.
 - A decision record for any standing rule the work produced.
@@ -130,24 +164,28 @@ In the same commit as the last change of the work:
 ## Promote an item
 
 Items in `AHEAD.md` move `open` → `approved` → `next` → `started`. On
-approval the ability gets its entry in `ABILITIES.md` with status `planned`,
-and the item names it. When work starts, the item goes to History as
+approval the ability gets its index row in `ABILITIES.md`, with status
+`planned`, and its entry, and the item names it. When work starts, the item goes to History as
 `started`, the ability becomes `in progress`, `ACTIVE.md` names the work, and
-a plan goes into `docs/plans/` when the work spans sessions. New work starts
-only from an empty `ACTIVE.md`.
+a plan goes into `docs/plans/` when the work spans sessions. `ACTIVE.md` holds
+one current piece of work: work that is blocked moves to Pending or back to
+AHEAD, and it never holds up unrelated work, which can then start.
 
 ## Fix what the check reports
 
-`python3 tools/check_tracking.py` prints `path:line: ERROR CODE: message`.
+`python3 tools/check_tracking.py` prints `path:line: ERROR CODE: message`; the
+commit hook runs it with `--staged`, on what the commit holds, and notes an
+A-file whose changes are not staged.
 
 | Code | Fix |
 |---|---|
-| `MISSING`, `NO_CONTRACT`, `NO_HOT_ZONE_END` | Create the file from its template; add the contract line or the marker |
+| `MISSING`, `NO_CONTRACT`, `NO_HOT_ZONE_END` | Create the file from its template, or restore one that held identifiers; add the contract line or the marker |
 | `HOT_ZONE_TOO_LONG`, `AGENTS_TOO_LONG` | Move detail below the hot zone and point to it; keep `AGENTS.md` to rules and pointers |
 | `UNPOINTED_SECTION` | Name the section in the hot zone's `Below:` line |
 | `BROKEN_LINK`, `MISSING_PATH`, `BROKEN_SPEC` | Point the link or path at what exists, or remove it |
 | `MISSING_FIELD` | Add the field to ACTIVE's Now, with "none" when it is empty |
-| `BAD_ID`, `BAD_STATUS`, `BAD_KIND`, `DUPLICATE_ID`, `NO_ENTRY`, `NOT_IN_INDEX`, `STATUS_MISMATCH` | Make the index row and the entry agree, with values from the lists |
+| `BAD_ID`, `BAD_STATUS`, `BAD_KIND`, `DUPLICATE_ID`, `NO_ENTRY`, `NOT_IN_INDEX`, `NO_INDEX` | Make the index rows and the entries agree, with values from the lists; each identifier keeps one row |
+| `STATUS_MISMATCH` | The row holds the status: drop the old entry's Status line, or set it to the row's |
 | `REMOVED_ID` | Restore the identifier; retire or drop the item instead of deleting it |
 | `NO_ABILITY`, `UNKNOWN_ABILITY`, `UNKNOWN_ITEM` | Name an existing ability on the item; list only indexed items in Next up |
 

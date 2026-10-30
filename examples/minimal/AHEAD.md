@@ -67,7 +67,8 @@ Started and dropped items, moved here from the index so the hot zone stays short
 
 - A new idea, research question, spike or proposal gets the next free
   identifier, an index row with state `open`, and an entry under Items.
-- **Approved:** state `approved` and an entry in `ABILITIES.md` (status
-  `planned`). **Scheduled:** state `next`, in Next up. **Started:** state
-  `started`, the row moves to History, the work appears in `ACTIVE.md`.
+- **Approved:** state `approved`, and the ability gets its row in
+  `ABILITIES.md` (status `planned`) and its entry. **Scheduled:** state
+  `next`, in Next up. **Started:** state `started`, the row moves to History,
+  the work appears in `ACTIVE.md`.
   **Dropped:** state `dropped`, the row moves to History, the entry says why.

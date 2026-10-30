@@ -1,6 +1,6 @@
 # ACTIVE — Repair Desk
 
-> What is being done now, and what must be resolved before new work starts. Not ideas, not future abilities.
+> What is being done now: one current piece of work, what is pending in it and what blocks it. Not ideas, not future abilities.
 
 ## Now
 
@@ -33,10 +33,14 @@ Below: How to maintain this file.
 
 - **Now** is rewritten at the end of every session. Every field stays, with
   "none", "nothing" or "—" when empty. The hot zone stays under 60 lines.
-- **Pending** holds unfinished or deferred items of the current work, and the
-  owner's decisions it waits on. An item is deleted when it is done and
-  committed; git keeps it.
-- **Debt** holds debt that blocks new work or will bite it. Debt that can wait
-  is an idea in `AHEAD.md`.
+- **One current piece of work.** Now names one piece of work at a time. Work
+  that is blocked, or waits on the owner, moves to Pending or back to AHEAD
+  (`AHEAD.md`); it never holds up unrelated work, which can then become the
+  current work.
+- **Pending** holds unfinished, deferred and blocked items, with what each
+  waits on, and the owner's decisions they wait on. An item is deleted when it
+  is done and committed; git keeps it.
+- **Debt** holds debt that will bite the next work. Debt that can wait is an
+  idea in `AHEAD.md`.
 - **Next new work** is filled only when Now has no current work: the first
   item of AHEAD's Next up. This file never invents new work.

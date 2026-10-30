@@ -9,9 +9,13 @@ contract and has a hot zone, the top of the file ended by the line
 
 It checks shape, not truth:
 
-  - every A-file exists, has its contract line and a hot zone within its cap;
-    AGENTS.md stays under its total cap and names every A-file in its first
-    100 lines
+  - AGENTS.md and ACTIVE.md always exist (the small setup); ABILITIES.md, AHEAD.md
+    and ATLAS.md are expected once the index of AGENTS.md lists them (a table
+    row in its first 100 lines whose first cell is the file), the file exists,
+    or it held identifiers in the last commit
+  - every expected A-file exists and can be read (UTF-8), has its contract line
+    and a hot zone within its cap; AGENTS.md stays under its total cap and names
+    ACTIVE.md and every other A-file that exists in its first 100 lines
   - every section below a hot zone is named in that hot zone
   - links in a hot zone and paths in the atlas map point at something
   - ACTIVE.md has all of its fields
@@ -21,25 +25,46 @@ It checks shape, not truth:
     under any name; the A-file's own fields, index, entries or map are not
     required
   - ABILITIES.md and AHEAD.md: identifiers in the right form, statuses and
-    states from the list, no duplicates, every index row has its entry and
-    every entry its row, the same status in both
+    states from the list, no duplicates across all their index tables, every
+    index row has its entry and every entry its row; an old entry that still
+    carries a Status line agrees with its row (the row holds the status)
+  - AHEAD.md keeps index rows in its hot zone; ABILITIES.md may keep none there
+    when an index table below holds them (done abilities can move below); a
+    table that lacks any of the ID, Ability and Status columns, such as an area
+    summary, is not an index, and the check ignores it
   - no identifier present in the last commit is gone
-  - an AHEAD item that is approved, next or started names an ability, and the
-    ability exists
+  - an AHEAD item that is approved, next or started names an ability, and every
+    ability an item names exists in ABILITIES.md (an item naming one when there
+    is no ABILITIES.md is reported too, unless the file was already reported
+    MISSING or UNREADABLE: the items do not report it again)
 
-Output: `path:line: ERROR CODE: message`. Exit 0 clean, 1 problems, 2 usage.
+A run by hand reads the working tree. With --staged (the commit hook's mode) it
+reads every A-file and every path it checks from the git index, as the commit
+will hold them, compares their identifiers with the last commit, and notes an
+A-file whose changes are not staged.
+
+Output: `path:line: ERROR CODE: message` on stdout, one line per problem; notes
+(`path: NOTE: message`, or a line about git) on stderr, which never count as
+problems, so that stdout holds only the problem lines a paired specification
+method reads (pairing P10). Exit 0 when it ran, whatever it found: the check reports and never
+refuses a commit. With --strict, 1 on problems, for a repository that chooses a
+strict pipeline. 2 on usage errors. 3 when it could not run: --staged without git
+or outside a git repository.
 
 Usage:
-    check_tracking.py [--root DIR] [--no-git]
+    check_tracking.py [--root DIR] [--no-git] [--staged] [--strict]
 
 Requires Python 3.9+, standard library only; git for the comparison with the
-last commit (skipped with a note when git or the last commit is unavailable).
+last commit (skipped with a note when git, the repository or the last commit is
+unavailable) and for --staged.
 """
 import argparse
+import enum
 import os
 import re
 import subprocess
 import sys
+from collections import namedtuple
 
 MARKER = "<!-- hot zone ends -->"
 # Every hot zone is read at each session start; 100 lines each keeps the
@@ -50,6 +75,9 @@ ACTIVE_HOT_CAP = 60
 # Claude Code's guidance for an instruction file: under 200 lines.
 AGENTS_CAP = 200
 A_FILES = ("ACTIVE.md", "ABILITIES.md", "AHEAD.md", "ATLAS.md")
+# A small setup keeps only AGENTS.md and ACTIVE.md; these three are expected once the index of AGENTS.md lists one,
+# the file exists, or it held identifiers in the last commit (so a file deleted with its index line is still reported).
+OPTIONAL = ("ABILITIES.md", "AHEAD.md", "ATLAS.md")
 # The files an agent reads its instructions from; none of them can be the home of an A-file.
 GUIDELINE_FILES = ("AGENTS.md", "CLAUDE.md")
 ACTIVE_FIELDS = ("Current work", "Progress", "Next step", "Blocked by", "Waiting on owner", "Restart", "Plan", "Updated")
@@ -59,6 +87,7 @@ AH_STATES = ("open", "approved", "next", "started", "dropped")
 NEEDS_ABILITY = ("approved", "next", "started")
 AB_ID = re.compile(r"\bAB-\d{3}\b")
 AH_ID = re.compile(r"\bAH-\d{3}\b")
+ANY_ID = re.compile(r"\b(?:AB|AH)-\d{3}\b")
 LINK = re.compile(r"\[[^\]\n]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 TICKED = re.compile(r"`([^`\s]+)`")
 # A field line, bulleted with - or * or not at all, as the skills' reader of the A-files reads it.
@@ -66,22 +95,185 @@ SPECS = re.compile(r"^\s*(?:[-*]\s*)?\*\*Specs:\*\*\s*(.*)$")
 HOME = re.compile(r"^\s*(?:[-*]\s*)?\*\*Home:\*\*\s*(?:\[[^\]]*\]\()?`?([^`)\s]+)`?\)?")
 
 
-class Report:
+# Every git call here is local (no network); 60 seconds is the timeout the reference check (relink.py) and the
+# specification scripts give the same calls, and a call that takes longer is treated as git being unavailable.
+GIT_TIMEOUT_SECONDS = 60
+# The mode git gives a submodule (a gitlink) in the index: a folder of another repository, not a file.
+GITLINK_MODE = "160000"
+# The stage of an index entry with no merge conflict; stages 1 to 3 are the sides of an unresolved conflict.
+MERGED_STAGE = "0"
+# The exit code of a check that could not run (git unavailable), apart from 2, a usage error.
+COULD_NOT_RUN = 3
+
+
+def git(root, *args):
+    """The finished git command run in the root folder (stdout as bytes), or None when git cannot run."""
+    try:
+        return subprocess.run(["git"] + list(args), cwd=root, capture_output=True, timeout=GIT_TIMEOUT_SECONDS)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+class Git(enum.Enum):
+    """What git can tell about the root folder."""
+    UNAVAILABLE = "git is not installed, or this is not a git repository"
+    NO_COMMIT = "no commit yet"
+    READY = "ready"
+
+    @classmethod
+    def of(cls, root):
+        done = git(root, "rev-parse", "--is-inside-work-tree")
+        if done is None or done.returncode != 0 or done.stdout.strip() != b"true":
+            return cls.UNAVAILABLE
+        done = git(root, "rev-parse", "--verify", "-q", "HEAD^{commit}")
+        return cls.READY if done is not None and done.returncode == 0 else cls.NO_COMMIT
+
+
+# One file in the git index: its mode, its object name and its merge stage.
+Entry = namedtuple("Entry", "mode object stage")
+
+
+class WorkTree:
+    """The files as they are on disk: what a run by hand reads."""
+
     def __init__(self, root):
         self.root = root
+
+    def missing_hint(self, path):
+        """Nothing to add: on disk, a missing path is simply missing."""
+        return ""
+
+    def unstaged(self, names):
+        """No staging to compare with: [(name, note)] is empty."""
+        return []
+
+    def read(self, name):
+        """The file's lines, or None when it is not a file; OSError or UnicodeDecodeError when it cannot be read."""
+        path = os.path.join(self.root, name)
+        if not os.path.isfile(path):
+            return None
+        with open(path, encoding="utf-8") as handle:
+            return handle.read().split("\n")
+
+    def exists(self, path):
+        return os.path.exists(path)
+
+    def isfile(self, path):
+        return os.path.isfile(path)
+
+    def inside(self, path):
+        real_root, real = os.path.realpath(self.root), os.path.realpath(path)
+        return real.startswith(real_root + os.sep)
+
+    def same_file(self, a, b):
+        try:
+            return os.path.samefile(a, b)
+        except OSError:
+            return False
+
+
+class Index:
+    """The files as the git index holds them: what the next commit will hold (--staged)."""
+
+    def __init__(self, root, entries):
+        self.root = root
+        self.entries = entries                  # {path relative to the root: Entry}
+        self.folders = {"/".join(path.split("/")[:n]) for path in entries for n in range(1, path.count("/") + 1)}
+
+    @classmethod
+    def load(cls, root):
+        """The index of the repository the root is in, limited to the root folder; None when git cannot list it."""
+        done = git(root, "ls-files", "-s", "-z")
+        if done is None or done.returncode != 0:
+            return None
+        entries = {}
+        for record in done.stdout.decode("utf-8", errors="surrogateescape").split("\0"):
+            if "\t" in record:
+                meta, path = record.split("\t", 1)
+                entry = Entry(*meta.split(" "))
+                if entry.stage != MERGED_STAGE or path not in entries:
+                    entries[path] = entry
+        return cls(root, entries)
+
+    def missing_hint(self, path):
+        """A hint for a path that the staged copy lacks and the working tree has."""
+        return " (it is in the working tree but not staged)" if os.path.exists(path) else ""
+
+    def unstaged(self, names):
+        """[(name, note)] for each named file whose working copy differs from the staged one, as git sees it (its
+        line-ending and other filters applied), or that only one of the two holds. A comparison git cannot make is
+        said, never read as no change."""
+        notes = []
+        for name in names:
+            if name in self.entries:
+                done = git(self.root, "diff", "--quiet", "--", name)
+                if done is None or done.returncode not in (0, 1):
+                    why = "git is unavailable" if done is None else "git diff exited %d" % done.returncode
+                    notes.append((name, "cannot tell whether it has unstaged changes: %s" % why))
+                    continue
+                changed = done.returncode == 1
+            else:
+                changed = os.path.lexists(os.path.join(self.root, name))
+            if changed:
+                notes.append((name, "has changes that are not staged: the check read the copy this commit holds"))
+        return notes
+
+    def relative(self, path):
+        return os.path.relpath(os.path.normpath(path), self.root).replace(os.sep, "/")
+
+    def blob(self, name):
+        """The staged bytes of a file, or None when the index does not hold it; OSError when git cannot give them."""
+        entry = self.entries.get(name)
+        if entry is None:
+            return None
+        if entry.stage != MERGED_STAGE:
+            raise OSError("the index holds unresolved conflicts for it")
+        done = git(self.root, "cat-file", "blob", entry.object)
+        if done is None or done.returncode != 0:
+            raise OSError("git cannot read its staged copy")
+        return done.stdout
+
+    def read(self, name):
+        blob = self.blob(name)
+        if blob is None:
+            return None
+        # The line endings a run by hand sees: open() in text mode reads \r\n and \r as \n.
+        return blob.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n").split("\n")
+
+    def exists(self, path):
+        rel = self.relative(path)
+        return rel == "." or rel in self.entries or rel in self.folders
+
+    def isfile(self, path):
+        entry = self.entries.get(self.relative(path))
+        return entry is not None and entry.mode != GITLINK_MODE
+
+    def inside(self, path):
+        rel = self.relative(path)
+        return rel != "." and rel != ".." and not rel.startswith("../")
+
+    def same_file(self, a, b):
+        return self.relative(a) == self.relative(b)
+
+
+class Report:
+    def __init__(self, root, tree=None):
+        self.root = root
+        self.tree = tree or WorkTree(root)
         self.items = []
+        self.notes = []
 
     def error(self, name, line, code, message):
         self.items.append((name, line, code, message))
 
+    def note(self, name, message):
+        self.notes.append((name, message))
+
     def print(self):
         for name, line, code, message in sorted(self.items, key=lambda i: (i[0], i[1], i[2])):
             print("%s:%d: ERROR %s: %s" % (name, line, code, message))
-
-
-def read(path):
-    with open(path, encoding="utf-8") as handle:
-        return handle.read().split("\n")
+        for name, message in self.notes:
+            print("%sNOTE: %s" % (name + ": " if name else "", message), file=sys.stderr)
 
 
 def unfenced(lines):
@@ -133,28 +325,24 @@ def is_path(token):
     return "/" in token or re.search(r"\.[A-Za-z0-9]{1,5}$", token) is not None
 
 
-def exists(root, base, target, test=os.path.exists):
-    target = target.split("#", 1)[0]
-    if not target:
-        return True
-    return test(os.path.normpath(os.path.join(base, target))) or test(os.path.join(root, target))
+class Reference:
+    """A link or path as a file writes it, read in a tree: relative to the folder of the file that names it, or
+    to the root."""
 
+    def __init__(self, tree, base, target):
+        self.tree = tree
+        target = target.split("#", 1)[0]
+        self.places = [os.path.normpath(os.path.join(base, target)), os.path.join(tree.root, target)] if target else []
 
-def is_file(root, base, target):
-    """A link or path that points at a file (a folder is not a specification or a home)."""
-    return exists(root, base, target, os.path.isfile)
+    def exists(self):
+        return not self.places or any(self.tree.exists(path) for path in self.places)
 
+    def is_file(self):
+        """It points at a file (a folder is not a specification or a home)."""
+        return not self.places or any(self.tree.isfile(path) for path in self.places)
 
-def inside(root, path):
-    real_root, real = os.path.realpath(root), os.path.realpath(path)
-    return real.startswith(real_root + os.sep)
-
-
-def same_file(a, b):
-    try:
-        return os.path.samefile(a, b)
-    except OSError:
-        return False
+    def hint(self):
+        return next((hint for hint in map(self.tree.missing_hint, self.places) if hint), "")
 
 
 def check_common(report, name, lines, cap, contract=True):
@@ -173,17 +361,17 @@ def check_common(report, name, lines, cap, contract=True):
     base = os.path.dirname(os.path.join(report.root, name))
     for i, line in enumerate(lines[:end], start=1):
         for target in LINK.findall(line):
-            if is_path(target) and not exists(report.root, base, target):
-                report.error(name, i, "BROKEN_LINK", "%s points at nothing" % target)
+            reference = Reference(report.tree, base, target)
+            if is_path(target) and not reference.exists():
+                report.error(name, i, "BROKEN_LINK", "%s points at nothing%s" % (target, reference.hint()))
     return end
 
 
 def last_commit_text(root, name):
-    try:
-        done = subprocess.run(["git", "show", "HEAD:" + name], cwd=root, capture_output=True, text=True, timeout=60)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    return done.stdout if done.returncode == 0 else None
+    """The file as the last commit holds it, or None. `./` reads it relative to the root folder, which may be a
+    folder inside the repository."""
+    done = git(root, "show", "HEAD:./" + name)
+    return done.stdout.decode("utf-8", errors="replace") if done is not None and done.returncode == 0 else None
 
 
 def check_removed(report, name, lines, pattern, use_git):
@@ -226,10 +414,12 @@ def entries(lines, pattern):
     return found
 
 
-def check_register(report, name, lines, pattern, columns, status_column, allowed, end, use_git):
+def check_register(report, name, lines, pattern, columns, status_column, allowed, end, use_git, rows_below=False):
+    """rows_below: the hot zone may hold no row when an index table below it holds them (ABILITIES.md)."""
     rows = index_rows(lines, pattern, columns)
-    if not any(n <= end for ids in rows.values() for n, _ in ids):
-        report.error(name, end, "NO_INDEX", "the hot zone has no index table with columns %s" % ", ".join(columns))
+    if not any(n <= end or rows_below for ids in rows.values() for n, _ in ids):
+        where = "the file has no index table with a row" if rows_below else "the hot zone has no index table"
+        report.error(name, end, "NO_INDEX", "%s with columns %s" % (where, ", ".join(columns)))
     heads = entries(lines, pattern)
     for identifier, found in rows.items():
         line = found[0][0]
@@ -267,8 +457,10 @@ def check_specs(report, lines):
             continue
         value = match.group(1)
         for target in LINK.findall(value) + [t for t in TICKED.findall(value) if is_path(t)]:
-            if is_path(target) and not is_file(report.root, report.root, target):
-                report.error("ABILITIES.md", i, "BROKEN_SPEC", "%s: %s points at nothing" % (current or "an ability", target))
+            reference = Reference(report.tree, report.root, target)
+            if is_path(target) and not reference.is_file():
+                report.error("ABILITIES.md", i, "BROKEN_SPEC", "%s: %s points at nothing%s"
+                             % (current or "an ability", target, reference.hint()))
 
 
 def home_of(report, name, lines, end):
@@ -282,34 +474,78 @@ def home_of(report, name, lines, end):
             home = match.group(1).rstrip(".,;:") or match.group(1)    # a sentence's punctuation, not the name's
             path = os.path.join(report.root, home)
             taken = [other for other in GUIDELINE_FILES + A_FILES
-                     if os.path.normpath(home) == other or same_file(path, os.path.join(report.root, other))]
+                     if os.path.normpath(home) == other or report.tree.same_file(path, os.path.join(report.root, other))]
             if taken:
                 report.error(name, i, "INVALID_HOME", "%s cannot be the home of %s: name the tracking file that was kept" % (home, name))
                 return None
-            if not (os.path.isfile(path) and inside(report.root, path)):
-                report.error(name, i, "MISSING_HOME", "%s is named as the home and is not a file in the project" % home)
+            if not (report.tree.isfile(path) and report.tree.inside(path)):
+                report.error(name, i, "MISSING_HOME", "%s is named as the home and is not a file in the project%s"
+                             % (home, report.tree.missing_hint(path)))
             return home
     return None
 
 
-def check(root, use_git):
-    report = Report(root)
-    files = {}
+def held_identifiers(root, name, use_git):
+    """Whether the last commit's copy of the file held an identifier outside its fenced examples."""
+    before = last_commit_text(root, name) if use_git else None
+    return before is not None and ANY_ID.search("\n".join(unfenced(before.split("\n")))) is not None
+
+
+def listed(lines):
+    """The A-files the index of AGENTS.md lists. The index is a table in its first 100 lines whose rows start with
+    an A-file's name (in backticks or as a link); a name elsewhere (the warm-up, keep in step, naming) is not a
+    listing. An AGENTS.md with no such table names its files in prose, and every A-file named there is listed."""
+    found = set()
+    for header, rows in tables(lines, 0, min(len(lines), HOT_CAP)):
+        for _, row in rows:
+            cell = re.sub(r"\]\([^)]*\)", "", row.get(header[0], "")).strip("[]` ")
+            found.add(cell[2:] if cell.startswith("./") else cell)
+    found &= set(A_FILES)
+    if found:
+        return found
+    first = "\n".join(lines[:HOT_CAP])
+    return {name for name in A_FILES if name in first}
+
+
+def check(root, use_git, tree=None):
+    report = Report(root, tree)
+    # first_lines: the text of AGENTS.md's first 100 lines; in_index: the A-files its index lists;
+    # reported: the A-files already reported MISSING or UNREADABLE, so that the item check does not report them again
+    # (ATLAS.md's MISSING_PATH may still name such a file as a path it lists).
+    files, present, first_lines, in_index, reported = {}, set(), "", set(), set()
     for name in ("AGENTS.md",) + A_FILES:
-        path = os.path.join(root, name)
-        if not os.path.isfile(path):
-            report.error(name, 1, "MISSING", "the file does not exist")
+        try:
+            lines = report.tree.read(name)
+        except (OSError, UnicodeDecodeError) as exc:
+            # A file the check cannot read or decode is a problem like the others; its other checks are skipped.
+            report.error(name, 0, "UNREADABLE", "cannot read the file: %s" % exc)
+            present.add(name)
+            reported.add(name)
             continue
-        files[name] = unfenced(read(path))
+        if lines is None:
+            hint = report.tree.missing_hint(os.path.join(root, name))
+            if name not in OPTIONAL or name in in_index:
+                report.error(name, 1, "MISSING", "the file does not exist%s" % hint)
+                reported.add(name)
+            elif held_identifiers(root, name, use_git):
+                report.error(name, 1, "MISSING", "the file does not exist%s, and it held identifiers in the last commit" % hint)
+                reported.add(name)
+            continue
+        files[name] = unfenced(lines)
+        present.add(name)
+        if name == "AGENTS.md":
+            first_lines, in_index = "\n".join(files[name][:HOT_CAP]), listed(files[name])
+    for name, message in report.tree.unstaged(("AGENTS.md",) + A_FILES):
+        report.note(name, message)
 
     lines = files.get("AGENTS.md")
     if lines is not None:
         if len(lines) > AGENTS_CAP:
             report.error("AGENTS.md", AGENTS_CAP, "AGENTS_TOO_LONG", "%d lines; the cap is %d" % (len(lines), AGENTS_CAP))
         end = check_common(report, "AGENTS.md", lines, HOT_CAP, contract=False)
-        first = "\n".join(lines[:HOT_CAP])
         for name in A_FILES:
-            if name not in first:
+            # ACTIVE.md always; another A-file once it exists. One already reported MISSING is not asked for twice.
+            if (name == "ACTIVE.md" or name in present) and name not in first_lines:
                 report.error("AGENTS.md", 1, "NOT_INDEXED", "%s is not named in the first %d lines" % (name, HOT_CAP))
 
     lines = files.get("ACTIVE.md")
@@ -326,7 +562,8 @@ def check(root, use_git):
         end = check_common(report, "ABILITIES.md", lines, HOT_CAP)
         abilities_kept = bool(end and home_of(report, "ABILITIES.md", lines, end))
         if end and not abilities_kept:
-            abilities = check_register(report, "ABILITIES.md", lines, AB_ID, ("ID", "Ability", "Status"), "Status", AB_STATUSES, end, use_git)
+            abilities = check_register(report, "ABILITIES.md", lines, AB_ID, ("ID", "Ability", "Status"), "Status", AB_STATUSES, end,
+                                       use_git, rows_below=True)
             check_specs(report, lines)
 
     lines = files.get("AHEAD.md")
@@ -339,16 +576,22 @@ def check(root, use_git):
                 kind = row.get("Kind", "").strip("` ")
                 if kind not in AH_KINDS:
                     report.error("AHEAD.md", line, "BAD_KIND", "%s: kind %r is not one of %s" % (identifier, kind, ", ".join(AH_KINDS)))
-                named = AB_ID.findall(row.get("Ability", ""))
-                if row.get("State", "").strip("` ") in NEEDS_ABILITY and not named:
+                item_abilities = AB_ID.findall(row.get("Ability", ""))
+                if row.get("State", "").strip("` ") in NEEDS_ABILITY and not item_abilities:
                     report.error("AHEAD.md", line, "NO_ABILITY", "%s is %s and names no ability (AB-0xx)" % (identifier, row.get("State", "").strip()))
-                for ability in named:
-                    if "ABILITIES.md" in files and not abilities_kept and ability not in abilities:
+                for ability in item_abilities:
+                    if abilities_kept or "ABILITIES.md" in reported:
+                        continue                 # kept elsewhere, or reported MISSING or UNREADABLE already
+                    if "ABILITIES.md" not in present:
+                        report.error("AHEAD.md", line, "UNKNOWN_ABILITY", "%s names %s, and there is no ABILITIES.md" % (identifier, ability))
+                    elif ability not in abilities:
                         report.error("AHEAD.md", line, "UNKNOWN_ABILITY", "%s names %s, which ABILITIES.md does not have" % (identifier, ability))
                 write_up = row.get("Write-up", "")
                 for target in LINK.findall(write_up) + [t for t in TICKED.findall(write_up) if is_path(t)]:
-                    if not exists(root, root, target):
-                        report.error("AHEAD.md", line, "BROKEN_LINK", "%s: write-up %s points at nothing" % (identifier, target))
+                    reference = Reference(report.tree, root, target)
+                    if not reference.exists():
+                        report.error("AHEAD.md", line, "BROKEN_LINK", "%s: write-up %s points at nothing%s"
+                                     % (identifier, target, reference.hint()))
             hot = "\n".join(lines[:end])
             next_up = hot.split("## Next up", 1)[1].split("\n## ", 1)[0] if "## Next up" in hot else ""
             for identifier in AH_ID.findall(next_up):
@@ -366,8 +609,10 @@ def check(root, use_git):
                 for number, row in rows:
                     for column in ("Works through", "Checked by"):
                         for token in TICKED.findall(row.get(column, "")):
-                            if is_path(token) and not exists(root, root, token):
-                                report.error("ATLAS.md", number, "MISSING_PATH", "%s: %s does not exist" % (row.get("Part", "?"), token))
+                            reference = Reference(report.tree, root, token)
+                            if is_path(token) and not reference.exists():
+                                report.error("ATLAS.md", number, "MISSING_PATH", "%s: %s does not exist%s"
+                                             % (row.get("Part", "?"), token, reference.hint()))
     return report
 
 
@@ -375,15 +620,33 @@ def main(argv):
     parser = argparse.ArgumentParser(description="Check the A-files that track a repository's work.")
     parser.add_argument("--root", default=".", help="the repository's root folder")
     parser.add_argument("--no-git", action="store_true", help="skip the comparison with the last commit")
+    parser.add_argument("--staged", action="store_true",
+                        help="read the A-files and the paths they name from the git index, as the commit will hold them")
+    parser.add_argument("--strict", action="store_true", help="exit 1 on problems (default: exit 0, problems are reported)")
     args = parser.parse_args(argv)
     if not os.path.isdir(args.root):
         print("no such folder: %s" % args.root, file=sys.stderr)
         return 2
-    report = check(os.path.abspath(args.root), not args.no_git)
+    if args.staged and args.no_git:
+        print("--staged reads the git index; it cannot run with --no-git", file=sys.stderr)
+        return 2
+    root = os.path.abspath(args.root)
+    state = None if args.no_git else Git.of(root)
+    tree = None
+    if args.staged:
+        tree = Index.load(root) if state is not Git.UNAVAILABLE else None
+        if tree is None:
+            print("--staged reads the git index and could not run: git is not installed, or %s is not in a git "
+                  "repository" % args.root, file=sys.stderr)
+            return COULD_NOT_RUN
+    report = check(root, state is Git.READY, tree)
+    if state in (Git.UNAVAILABLE, Git.NO_COMMIT):
+        report.note(None, "%s: identifiers are not compared with the last commit" % state.value)
     report.print()
     if report.items:
         print("%d problem(s)" % len(report.items), file=sys.stderr)
-        return 1
+        # The problems are the output; only a strict run turns them into a failure.
+        return 1 if args.strict else 0
     return 0
 
 

@@ -18,7 +18,6 @@ Below: Planned, Built, Retired, How to maintain this file.
 
 ### AB-0xx <name>
 
-- **Status:** planned
 - **From:** AH-0xx
 - **What it will do:** <one or two lines>
 - **Specs:** <optional: use case identifiers, or links to the specifications that define it>
@@ -27,7 +26,6 @@ Below: Planned, Built, Retired, How to maintain this file.
 
 ### AB-001 <name>
 
-- **Status:** done
 - **What it does:** <one or two lines>
 - **Specs:** <optional: use case identifiers, or links to the specifications that define it>
 - **Known limits:** <or "none known">
@@ -38,23 +36,28 @@ Below: Planned, Built, Retired, How to maintain this file.
 
 ### AB-0xx <name>
 
-- **Status:** retired
 - **Why:** <reason, date>
 
 ## How to maintain this file
 
-- An ability gets its entry when an item of `AHEAD.md` is approved, with
-  status `planned`, under Planned. It moves to Built when work starts.
-- The status changes in the same commit as the work, in the index row and in
-  the entry together.
+- An ability gets its index row, with status `planned`, and its entry under
+  Planned when an item of `AHEAD.md` is approved. The entry moves to Built
+  when work starts.
+- The status lives in the index row only, and changes in the same commit as
+  the work. An entry carries no Status line; an older entry that still has one
+  is compared with its row, and a mismatch is reported.
 - Nothing is deleted. A removed ability becomes `retired`, moves under
   Retired, and keeps the reason. Identifiers are never reused.
 - **Next** names the AHEAD item that continues the ability, or says
   "nothing planned". **Evidence** links the spec, tests or evaluation.
 - When the index outgrows the hot zone, keep the planned and in-progress rows
-  and one row per area in the hot zone, and move the full index below it.
-- The check (`tools/check_tracking.py`) refuses a missing entry, a status
-  outside the list, a mismatch between index and entry, and a removed
-  identifier.
+  in the hot zone and move the done and retired rows to an index table below
+  it, named in the `Below:` line; each identifier keeps one row. When every
+  ability is done, the hot zone may hold no ability row at all, only an area
+  summary: a table that lacks any of the ID, Ability and Status columns is not
+  an index, and the check ignores it.
+- The check (`tools/check_tracking.py`) reports a missing entry, a status
+  outside the list, an identifier listed twice, a removed identifier, and an
+  old entry whose Status line disagrees with its row.
 
 Template: this file as it stands, with the placeholders in angle brackets.

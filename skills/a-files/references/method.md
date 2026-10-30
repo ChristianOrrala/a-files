@@ -42,15 +42,21 @@ ways, as the research behind the method found:
 
 The method answers with five short, single-purpose files whose top part is
 read at every start, a rule to update them with the work, stable identifiers
-that are never removed, and a check that refuses a commit that breaks their
-shape.
+that are never removed, and a check that reports, at every commit, what
+breaks their shape; it informs and never refuses the commit.
+
+**Who they serve.** The A-files serve one owner directing agents, not a team
+tracker. One person decides what the work is; the agents, in one session or
+several, read the same picture and keep it in step. A team that needs
+assignments, reviews and parallel boards uses an issue tracker beside them
+(section 13).
 
 ## 2. The five files
 
 | File | Job | Never holds |
 |---|---|---|
 | `AGENTS.md` | The rules, the warm-up, the index of every file an agent needs, the keep-in-step rule | State, plans, history |
-| `ACTIVE.md` | The work in progress, and what must be resolved before new work starts: progress, the next step in this work, pending and deferred items, debt, blockers | Ideas, future abilities |
+| `ACTIVE.md` | The one current piece of work: progress, the next step in this work, pending, blocked and deferred items, debt | Ideas, future abilities |
 | `ABILITIES.md` | Every ability of the product, planned, in progress, done or retired; one entry each, never deleted | The agent's own abilities; ideas not approved |
 | `AHEAD.md` | Everything not started: the next-up queue, milestones, ideas, research, spikes and proposals, each pointing to its full write-up | Work in progress |
 | `ATLAS.md` | The architecture map: each part of the repository, what it does, the files it works through, what it depends on, what checks it | A full file index |
@@ -62,6 +68,18 @@ file's job; `ABILITIES.md` says in its first line that it is not about the
 agent's own abilities, a reading the word invites.
 
 A repository keeps one map: `ATLAS.md` replaces an `ARCHITECTURE.md`.
+
+**The small setup and the full one.** A small repository may keep only
+`AGENTS.md` and `ACTIVE.md`: the rules and the current work. The full setup
+adds `ABILITIES.md`, `AHEAD.md` and `ATLAS.md`. A small setup grows later:
+add a file from its template and name it in the index of `AGENTS.md`, and
+from then on the check expects it. The warm-up reads the hot zones of the
+files the repository has.
+
+Without `AHEAD.md`, blocked work stays in ACTIVE's Pending, and Next new work
+names what the owner chose next, since there is no Next up to take it from.
+Without `ABILITIES.md`, abilities are not tracked: the current work names
+what it changes in its own words.
 
 ## 3. Hot zones and the warm-up
 
@@ -75,7 +93,7 @@ A repository keeps one map: `ATLAS.md` replaces an `ARCHITECTURE.md`.
 |---|---|---|
 | `AGENTS.md` | 100 lines (file under 200) | Purpose, warm-up, index, keep in step, commands, rules |
 | `ACTIVE.md` | 60 lines | Now (fixed fields), Pending, Debt, Next new work |
-| `ABILITIES.md` | 100 lines | Contract, status list, index |
+| `ABILITIES.md` | 100 lines | Contract, status list, index (done rows may sit in a table below) |
 | `AHEAD.md` | 100 lines | Next up, milestones, index of open items |
 | `ATLAS.md` | 100 lines | The map table, the flow |
 
@@ -87,7 +105,8 @@ maintain this file.`
 **Warm-up.** At every session start an agent reads, in this order:
 
 1. the hot zone of `AGENTS.md`;
-2. the hot zones of `ACTIVE.md`, `ABILITIES.md`, `AHEAD.md` and `ATLAS.md`;
+2. the hot zones of `ACTIVE.md`, `ABILITIES.md`, `AHEAD.md` and `ATLAS.md`
+   (those the repository keeps);
 3. `git log --oneline -15`.
 
 That is at most about 400 lines, the same picture for every agent. Anything
@@ -121,7 +140,7 @@ Two more rules:
 
 ```text
 idea, research or spike ─► AHEAD (open; a write-up in docs/research/ when it is long)
-approved                ─► AHEAD (approved) + an ABILITIES entry with status planned
+approved                ─► AHEAD (approved) + an ABILITIES index row (status planned) and its entry
 scheduled               ─► AHEAD (next), in the Next up queue
 started                 ─► ACTIVE current work; ABILITIES in progress; AHEAD (started), row moved to History;
                            a plan in docs/plans/ when the work spans sessions
@@ -129,13 +148,15 @@ done                    ─► ABILITIES done, with evidence; gone from ACTIVE; 
 dropped                 ─► AHEAD (dropped), row moved to History, the entry says why
 ```
 
-**Sorting what is not done.** If it blocks new work or belongs to the current
-work, it is in `ACTIVE.md`. If it can wait, it is in `AHEAD.md`. Debt that
-blocks or will bite the next work is in `ACTIVE.md`; debt that can wait is an
-idea in `AHEAD.md`.
+**Sorting what is not done.** If it belongs to the current work, it is in
+`ACTIVE.md`. If it can wait, it is in `AHEAD.md`. Debt that will bite the next
+work is in `ACTIVE.md`; debt that can wait is an idea in `AHEAD.md`.
 
-**New work starts only from an empty ACTIVE.** When Now has no current work,
-`ACTIVE.md` names the first item of AHEAD's Next up. It never invents new work.
+**One current piece of work.** `ACTIVE.md` names one current piece of work at
+a time. Work that is blocked, or waits on the owner, moves to Pending or back
+to AHEAD, with what it waits on; it never holds up unrelated work, which
+can then become the current work. When Now has no current work, `ACTIVE.md`
+names the first item of AHEAD's Next up. It never invents new work.
 
 ## 6. Identifiers and states
 
@@ -156,8 +177,11 @@ flows `A1`, `A2`.
 | `AHEAD.md` | State | `open`, `approved`, `next`, `started`, `dropped` |
 
 An AHEAD item that is `approved`, `next` or `started` names its ability. An
-ability's status is written twice, in the index row and in the entry, and the
-two agree.
+ability's status is written once, in its index row: agents read the row at
+session start, and the row moves with the ability when done abilities sit
+below the hot zone. Entries carry no Status line. In a repository adopted
+earlier, an old entry that still carries a Status line is compared with its
+row, and a mismatch is reported; drop the line, or keep it in step.
 
 ## 7. The other homes
 
@@ -174,29 +198,77 @@ the research behind them.
 ## 8. The check and the hook
 
 `tools/check_tracking.py` (Python 3.9+, standard library only) checks the
-shape of the five files, not their truth. It refuses:
+shape of the A-files, not their truth.
 
-- a missing A-file, a missing contract line, a missing end of hot zone, or a
-  hot zone over its cap; an `AGENTS.md` over 200 lines or not naming every
-  A-file in its first 100 lines;
+**Which files it expects.** `ACTIVE.md` is always expected, and so is
+`AGENTS.md`: that is the small setup. `ABILITIES.md`, `AHEAD.md` and `ATLAS.md` are
+expected when the index of `AGENTS.md` lists them (a row of its index table
+in its first 100 lines; without an index table, a name in those lines), when
+the file exists, or when it held identifiers in the last commit, so a file deleted
+together with its index line is still reported. (`ATLAS.md` holds no
+identifiers, so removing it with its index line is how a repository shrinks
+back.)
+
+It reports:
+
+- a missing expected A-file, a missing contract line, a missing end of hot
+  zone, or a hot zone over its cap; an `AGENTS.md` over 200 lines, or not
+  naming `ACTIVE.md` and every other A-file that exists in its first 100
+  lines;
 - a section below a hot zone that the hot zone does not name;
 - a link in a hot zone, or a path in the atlas map, that points at nothing;
 - an `ACTIVE.md` without one of its fields;
 - an identifier in the wrong form, a status, kind or state outside the lists,
-  a duplicate, an index row without its entry or the reverse, a status that
-  differs between index and entry;
+  an identifier listed twice across the file's index tables, an index row
+  without its entry or the reverse, and an old entry that still carries a
+  Status line different from its row (the row holds the status, section 6);
+- an `ABILITIES.md` whose index tables hold no row; its hot zone may hold no
+  ability row when a table below holds them, so done abilities can move
+  below. A table that lacks any of the ID, Ability and Status columns, such
+  as an area summary, is not an index, and the check ignores it. `AHEAD.md`
+  keeps its index rows in its hot zone;
 - a link or backticked path in an ability's `Specs` line that does not point
   at a file, and a `Home` that is not a file in the project or that names an
   A-file or a guideline file;
 - an identifier that was in the last commit and is gone;
-- an AHEAD item that is approved, next or started without an ability, or
-  naming one that does not exist.
+- an AHEAD item that is approved, next or started without an ability, or an
+  item naming an ability that `ABILITIES.md` does not have, or naming one
+  when there is no `ABILITIES.md` (unless the file is already reported
+  missing or unreadable: one file, one finding).
 
 Templates inside fenced code blocks are ignored, so each file can carry its own
-template. Output: `path:line: ERROR CODE: message`; exit 0 clean, 1 problems,
-2 usage. `--no-git` skips the comparison with the last commit.
+template. Output: one line `path:line: ERROR CODE: message` per problem; an
+A-file it cannot read or decode is the problem `UNREADABLE`. Exit 0 when it
+ran, whatever it found; with `--strict`, 1 on problems; 2 on a usage error; 3
+when it could not run (`--staged` without git or outside a repository).
+`--no-git` skips the comparison with the last commit.
 
-**The hook.** `scripts/pre-commit` runs the check before every commit. Once
+**Notes.** What is not a problem is a note on standard error (`path: NOTE:
+message`): in staged mode an A-file with unstaged changes, or one whose
+changes git could not compare; a comparison with the last commit that was
+skipped because git, the repository or the first commit is missing. The
+A-files keep notes off standard output on purpose: a specification method
+paired with them runs the check with `--strict`, and again without it when
+it exits 2, and reads its exit code and its `path:line: ERROR CODE: message`
+lines (pairing P10), so the problem lines are the only lines there. The
+option, the exit codes, the codes and the line format change only with the
+pairing contract.
+
+**Staged mode.** Run by hand, the check reads the working tree. With
+`--staged` it reads every A-file and every path it checks from the index,
+the files as the commit will hold them, and compares their identifiers with
+the last commit; it also notes an A-file whose changes are not staged. A
+path that exists only in the working tree is reported, since the commit
+lacks it. Without git or outside a repository `--staged` could not run
+(exit 3); before the first commit it reads the index and compares nothing.
+
+**The hook.** `scripts/pre-commit` runs `python3 tools/check_tracking.py --staged`
+before every commit and never refuses it: the problems in what is staged are
+shown, with a note for each A-file whose changes are left out, and the commit
+goes through, and so it does, with a line saying so, when the check cannot
+run. A repository that chooses a strict pipeline replaces the hook's lines
+with `exec python3 tools/check_tracking.py --staged --strict`, its own
+choice, made on purpose. Once
 the person agrees to it (section 10), install it as `.githooks/pre-commit` in
 the repository and enable it once per clone:
 
@@ -204,7 +276,8 @@ the repository and enable it once per clone:
 git config core.hooksPath .githooks
 ```
 
-The hook checks the working tree, so a file left unstaged still counts.
+The hook reads what is staged, so its report describes the commit; a change
+left unstaged is noted, not counted.
 
 ## 9. Wiring each agent
 
@@ -226,27 +299,58 @@ new repositories from `templates/`.
 
 ## 10. Adopting the method
 
-**A new repository.** It takes the same two replies as any adoption (below):
-the first lists the files it would create from `templates/` and proposes the
-check and the hook, creating nothing; the second, after the person answers,
-does the steps.
+**Small or full.** Every adoption offers the small setup (`AGENTS.md` and
+`ACTIVE.md`) or the full one (all five files), and the person chooses; a
+small setup grows later (section 2). In the small setup, the index of
+`AGENTS.md` lists only `ACTIVE.md` (step 2 below), since the check expects
+every A-file the index lists.
 
-1. Copy `templates/` into the repository root (keep `docs/` as it is).
-2. Fill `AGENTS.md`: purpose, commands, rules, any extra row in the index.
-3. Fill `ATLAS.md` with the parts that exist; `ABILITIES.md` with what the
-   product can do; `AHEAD.md` with what is planned; `ACTIVE.md` with the
-   current work.
+**A new repository.** It takes the same two replies as any adoption (below):
+the first lists the files it would create from `templates/` for the small
+setup and for the full one, asks which, and proposes the check and the hook,
+creating nothing; the second, after the person answers, does the steps.
+
+1. Copy the chosen files from `templates/` into the repository root (keep
+   `docs/` as it is).
+2. Fill `AGENTS.md`: purpose, commands, rules, any extra row in the index;
+   in the small setup, remove the other three files' rows from the index,
+   and their mentions from the warm-up and keep in step.
+3. Fill `ACTIVE.md` with the current work; in the full setup, `ATLAS.md` with
+   the parts that exist, `ABILITIES.md` with what the product can do and
+   `AHEAD.md` with what is planned.
 4. Copy `scripts/check_tracking.py` to `tools/`. Install the hook only if the
    person said yes to it, or the request already says to install it: with no
    commit hook yet, copy `scripts/pre-commit` to `.githooks/pre-commit` and run
    `git config core.hooksPath .githooks`; with one (a hooks path, a file in
-   `.git/hooks/`, a hook manager), add the line that runs the check to it
-   instead of replacing it.
+   `.git/hooks/`), add the line
+   `python3 tools/check_tracking.py --staged || true` to it instead of
+   replacing it, before the hook's first command: after the shebang when
+   there is one, at the top when there is none. The added line never decides
+   the hook's result unless a strict check is asked for. The check only
+   reports and exits 0, so as the hook's last line it would decide the
+   result, and a failing command of the person's own before it would no
+   longer refuse the commit; `|| true` keeps a hook that runs with `set -e`
+   going when the check cannot run. For a strict check, which refuses a
+   commit while the A-files have problems, use
+   `python3 tools/check_tracking.py --staged --strict || exit 1`, placed the
+   same way; the person's later commands still decide otherwise. The
+   `|| true` and `|| exit 1` lines are for a shell hook. Some hook managers,
+   such as the pre-commit framework, run a step without a shell, so a hook
+   manager gets a step of its own running
+   `python3 tools/check_tracking.py --staged`, which reports and exits 0, or
+   `python3 tools/check_tracking.py --staged --strict` to refuse; never
+   `|| true` in a step. The step takes no file names, runs on every commit,
+   one that only deletes files included, and shows its output, so the
+   report is seen. For example, the pre-commit framework, in
+   `.pre-commit-config.yaml`: a `repo: local` hook with
+   `entry: python3 tools/check_tracking.py --staged`, `language: system`,
+   `pass_filenames: false`, `always_run: true` and `verbose: true`; for the
+   strict check, `entry: python3 tools/check_tracking.py --staged --strict`.
 5. Run `python3 tools/check_tracking.py` until it is clean; commit.
 
 **A repository with its own tracking files.** Use the first reply to survey
-the repository, show the mapping and proposed moves, propose the check and
-hook, and end with questions, without creating, moving or removing anything
+the repository, show the mapping and proposed moves, offer the small or the
+full setup, propose the check and hook, and end with questions, without creating, moving or removing anything
 or installing a hook; apply only in a second reply after the person answers
 in a new message. Asking to adopt the method or set up the repository does
 not supply those answers. If the request already specifies the alignment
@@ -264,6 +368,7 @@ First show what exists and where it would go:
 |---|---|
 | A status or board note | `ACTIVE.md` Now, Pending and Debt |
 | A feature list | `ABILITIES.md`, one entry per feature, with a new `AB-` identifier |
+| Under the small setup: a feature list, a roadmap or an architecture document | No A-file holds it: it stays where it is (left out), or the setup grows to hold it; the person chooses |
 | A roadmap, backlog or idea list | `AHEAD.md`: milestones, Next up, items |
 | An architecture or layout document | `ATLAS.md` (keep a design rationale as a decision record) |
 | Standing rules found in a status note | `docs/decisions/` |
@@ -293,8 +398,9 @@ imports, paths in settings, CI, hooks and scripts, paths in backticks) and
 flags a bare name in prose for a decision. `apply` runs the moves with
 `git mv` and rewrites the exact references. A folder whose new path is an
 existing folder moves into it file by file; a file whose new path exists is
-refused, so its content is merged and the old file removed first. `verify` fails
-while any link is broken or any old path is still named.
+refused, so its content is merged and the old file removed first. `verify`
+reports every broken link and every old path still named (with `--strict` it
+exits 1 while one remains).
 Write the adoption record after `apply` and before the final `verify`, keeping
 its old names as history, and pass `--keep docs/decisions/NNNN-adopt-the-a-files.md`
 to that verification so its mentions are listed as `KEPT`, not problems;
@@ -339,6 +445,8 @@ says what it is to someone who has not met it.
   describes yesterday's work; only the keep-in-step rule and review do.
 - **Models vary from run to run.** No instruction is followed every time; the
   check and the hook are the floor that holds regardless.
+- **One owner.** The method assumes one person directing the work; it has no
+  assignments, reviews or permissions for a team.
 - **The warm-up costs tokens.** About 400 lines per session at the caps;
   that is the price of a shared picture, and the caps keep it from growing.
 - **One editor at a time.** The method does not merge parallel edits to the
@@ -346,18 +454,22 @@ says what it is to someone who has not met it.
 
 ## 13. Questions
 
-**Why not an issue tracker?** Use one when a team or a public remote exists;
-then `AHEAD.md` items can link their issues. The A-files work offline, travel
-with the code, and are read by every agent without credentials.
+**Why not an issue tracker?** The A-files serve one owner directing agents,
+not a team tracker. Use a tracker when a team or a public remote exists; then
+`AHEAD.md` items can link their issues. The A-files work offline, travel with
+the code, and are read by every agent without credentials.
 
 **Why Markdown and not JSON?** People review Markdown. JSON resists careless
-rewriting better; the check gives Markdown the same protection by refusing
-removed identifiers and broken shape.
+rewriting better; the check gives Markdown the same protection by reporting
+removed identifiers and broken shape at every commit.
 
 **What if the ABILITIES index outgrows its hot zone?** Keep the planned and
-in-progress rows and one summary row per area in the hot zone, and move the
-full index below it; the check accepts an identifier in any index table of the
-file.
+in-progress rows in the hot zone and move the done and retired rows to an
+index table below it, named in the `Below:` line. Each identifier keeps one
+row: the check reads every index table of the file as one index and reports
+an identifier listed twice. When every ability is done, the hot zone may hold
+no ability row at all, only an area summary: a table that lacks any of the
+ID, Ability and Status columns is not an index, and the check ignores it.
 
 **Can a file stay empty?** Yes: an empty section says "None." or "Nothing
 scheduled", and `ACTIVE.md` keeps every field with "none" or "—".
