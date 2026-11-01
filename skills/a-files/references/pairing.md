@@ -24,7 +24,7 @@ joining twice changes nothing.
 | P4 | `AHEAD.md` | A deferred requirement keeps its row in the requirements catalog; an AHEAD item cites its identifier (`FR-012`). A change request accepted for later becomes an AHEAD item that links its change record. A recovery change log entry decided `later` becomes an AHEAD item that cites it; the entries of one use case share one item. Nothing is copied. |
 | P5 | `ATLAS.md` | One row maps the specifications: their folder and files, and the checks that cover them. |
 | P6 | The finish check | A change that moves a use case's Status while `ABILITIES.md` and `ACTIVE.md` stay unchanged gets a warning. |
-| P7 | The session start | The state shown when a session starts includes the current work from `ACTIVE.md`. |
+| P7 | The session start | The state shown when a session starts includes the current work and the Debt from `ACTIVE.md`, and the Next up list from `AHEAD.md`. |
 | P8 | `docs/decisions/` | Decision records follow the A-files naming: four digits, then the subject. |
 | P9 | `AHEAD.md` | A drift the person chose to align later, when asked at the end of an agent's turn, becomes one AHEAD item: an index row with the next free identifier, the drift as its title, kind `idea`, state `open` and `—` in every other column, and an entry under `## Items` with **What** (the drift), **Why** (the person chose to align it later, with the date) and **Write-up** `none`. The same drift is recorded once. While `AHEAD.md` names a **Home:**, or has no index or no Items section, the drift goes to the specification side's own open-work list instead. |
 | P10 | `tools/check_tracking.py` | The specification side's end-of-turn question reads the A-files check only through its command line, so that command line is part of this contract: the question runs the check with `--strict`, and again without it when the check exits 2 (an earlier check that does not know the option); exit 0 means the A-files are clean and nothing is asked; exit 1 means problems, each printed as one line `path:line: ERROR CODE: message`; any other exit code means the check could not run, and nothing is asked. A message names its subject as an identifier, a quoted or bold name, or a path, and a number in it is a count or a position, so a finding whose count or position changes is the same finding. |
@@ -64,8 +64,8 @@ With another method, the row names that method's folder.
 ## What the specification side does
 
 Its router reads ACTIVE's current work and AHEAD's Next up (P3) and shows the
-current work when a session starts (P7); its finish check warns when a use
-case moves alone (P6); its setup makes the P1 and P5 edits when it arrives
+current work, the Debt and the Next up list when a session starts (P7); its
+finish check warns when a use case moves alone (P6); its setup makes the P1 and P5 edits when it arrives
 second; with `ABILITIES.md`, its use-case mapping suggests the ability each new
 use case joins; its
 end-of-turn question records a drift the person puts off as an AHEAD item in

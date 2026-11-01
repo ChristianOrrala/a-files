@@ -2,6 +2,16 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 1.4.0
+
+The pairing contract says what a specification method reads at session start. No change to the check or the hook.
+
+- **The pairing contract.** One line changed (P7): the state shown at session start includes the Debt of `ACTIVE.md` and the Next up list of `AHEAD.md`, which upspec 1.4.0 reads. Both products carry the same wording.
+- **The method guide.** Its version line reads 1.4.0, with the date of this release.
+- **Evaluations.** None ran for this release. The 1.3.0 scores stay what they were, for 1.3.0.
+
+**What an upgrade asks of you:** update the plugin. The check, the templates and the hook are unchanged, so nothing in a project needs copying.
+
 ## 1.3.0
 
 The check informs; it never refuses a commit. A project may start with two files, the commit hook checks what the commit will hold, and an ability's status is written once.
