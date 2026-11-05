@@ -2,6 +2,10 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 1.5.0
+
+The `AGENTS.md` template gains a rule: in a message to a person, every identifier is followed by its title in parentheses. A repository that already adopted the A-files adds the line by hand. No change to the check or the hook.
+
 ## 1.4.0
 
 The pairing contract says what a specification method reads at session start. No change to the check or the hook.

@@ -54,6 +54,7 @@ it (enable it once per clone: `git config core.hooksPath .githooks`).
 - **Always:** <what an agent must always do in this repository>
 - **Ask first:** <what needs the owner's yes: dependencies, schema changes, deletions, anything leaving the machine>
 - **Never:** <what an agent must never do: secrets in files, force-push, editing generated files>
+- **Say what a code means:** when you write to a person, follow every identifier with its title in parentheses, every time: `AB-009 (Export invoices)`, `AH-007 (Gift vouchers)`. Take the title from the file name, heading or table row, and look it up if you don't have it. This applies to messages only: files, commit lines, code markers and test names keep the identifier their format requires.
 
 Below: Before committing, Naming.
 

@@ -14,7 +14,7 @@ They serve one owner directing agents, not a team tracker: one person decides
 the work, and the agents read and keep the same picture across sessions. A
 team that needs assignments and reviews keeps an issue tracker beside them.
 
-**Version 1.4.0.**
+**Version 1.5.0.**
 
 ## The five files
 

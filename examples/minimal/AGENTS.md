@@ -54,6 +54,7 @@ it (enable it once per clone: `git config core.hooksPath .githooks`).
 - **Always:** write the test for a booking rule before changing the rule; keep times in the workshop's time zone.
 - **Ask first:** new dependencies, database schema changes, anything that sends a message to a real customer.
 - **Never:** customer phone numbers or names in tests or logs; secrets in files; force-push.
+- **Say what a code means:** when you write to a person, follow every identifier with its title in parentheses, every time: `AB-009 (Export invoices)`, `AH-007 (Gift vouchers)`. Take the title from the file name, heading or table row, and look it up if you don't have it. This applies to messages only: files, commit lines, code markers and test names keep the identifier their format requires.
 
 Below: Before committing, Naming.
 
