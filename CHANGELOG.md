@@ -2,6 +2,18 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 1.7.0
+
+- Adoption runs `scripts/install_check.py` in place from the plugin folder. Choose the check alone or the check and hook first; the installer refuses to change a hooks folder shared through global or system configuration. Install commands quote the plugin path.
+- The `AGENTS.md` template states what a request authorizes and how reserved approval is granted (0048).
+- The check advises `BLOCKER_WITHOUT_SOURCE` when a blocker names no source, and the warm-up checks the source of a carried-over blocker before honoring it (0049).
+
+**What an upgrade asks of you:** update the plugin. Add the new authorization rule and warm-up sentence from the `AGENTS.md` template to each project's `AGENTS.md` by hand. To refresh the installed check, preserve or remove the existing `tools/check_tracking.py` as appropriate, then re-run `scripts/install_check.py` against the project; the installer leaves an existing check untouched. Choose the hook option only if needed.
+
+## 1.6.0
+
+Before the first change, the warm-up states Finished, Remaining, Blocked by and Next step in four short lines, writing "nothing" where a line is empty, checked against git and not only against `ACTIVE.md`. Projects that already adopted the A-files add step 4 to their `AGENTS.md` by hand. No change to the check or the hook.
+
 ## 1.5.0
 
 The `AGENTS.md` template gains a rule: in a message to a person, every identifier is followed by its title in parentheses. A repository that already adopted the A-files adds the line by hand. No change to the check or the hook.

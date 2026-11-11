@@ -6,11 +6,12 @@ repair and the workshop tracks its work orders. Python, one service, code in
 
 ## Warm-up
 
-At the start of every session, read in this order:
+At the start of every session, do the following in order:
 
-1. this file's hot zone (it ends at the line `<!-- hot zone ends -->`);
-2. the hot zones of `ACTIVE.md`, `ABILITIES.md`, `AHEAD.md` and `ATLAS.md`;
-3. `git log --oneline -15`.
+1. read this file's hot zone (it ends at the line `<!-- hot zone ends -->`);
+2. read the hot zones of `ACTIVE.md`, `ABILITIES.md`, `AHEAD.md` and `ATLAS.md`;
+3. read `git log --oneline -15`;
+4. before the first change, say where things stand in four short lines: **Finished**, **Remaining**, **Blocked by** and **Next step**, writing "nothing" where a line is empty. Check them against `git log` and `git status`, not only against `ACTIVE.md`. Before honoring a `Blocked by` line from an earlier session, check its named source and say whether it holds; a missing or invalid source makes the blocker a guess.
 
 Open anything else only when the task needs it; the index says where it is.
 

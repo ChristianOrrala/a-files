@@ -7,7 +7,7 @@
 - **Current work:** <AB-0xx and one line, or "none">
 - **Progress:** <where it stands>
 - **Next step:** <the next step in this work>
-- **Blocked by:** <what blocks it, or "nothing">
+- **Blocked by:** <what it stops and its source: owner message and date, specification ID or file path, or failing check: name; or "nothing">
 - **Waiting on owner:** <a decision or an action, or "nothing">
 - **Restart:** <the commands that bring a session back in>
 - **Plan:** <docs/plans/... or "none">

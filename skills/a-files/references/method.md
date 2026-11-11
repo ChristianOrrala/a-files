@@ -2,7 +2,7 @@
 
 *Five files every coding agent reads first.*
 
-Version 1.5.0, 2026-11-05
+Version 1.7.0, 2026-11-10
 
 A way for a repository to keep its rules, its current work, its abilities, its
 future and its map in five Markdown files at the root, so that any coding
@@ -102,15 +102,19 @@ Each A-file opens with its title and a one-line contract in a quotation block
 it: the hot zone ends with a line such as `Below: Items, History, How to
 maintain this file.`
 
-**Warm-up.** At every session start an agent reads, in this order:
+**Warm-up.** At every session start an agent does the following, in order:
 
-1. the hot zone of `AGENTS.md`;
-2. the hot zones of `ACTIVE.md`, `ABILITIES.md`, `AHEAD.md` and `ATLAS.md`
+1. read the hot zone of `AGENTS.md`;
+2. read the hot zones of `ACTIVE.md`, `ABILITIES.md`, `AHEAD.md` and `ATLAS.md`
    (those the repository keeps);
-3. `git log --oneline -15`.
+3. read `git log --oneline -15`;
+4. before the first change, say where things stand in four short lines: **Finished**, **Remaining**, **Blocked by** and **Next step**, writing "nothing" where a line is empty. Check them against `git log` and `git status`, not only against `ACTIVE.md`.
 
-That is at most about 400 lines, the same picture for every agent. Anything
-else is opened when the task needs it.
+Check the source before honoring a carried-over blocker and say so.
+
+The owner sees the agent’s picture before any work, and a stale `ACTIVE.md` shows up early.
+
+The reads cover at most about 400 lines. Anything else is opened when the task needs it.
 
 `AGENTS.md` names the other files by path and never imports them (`@file`):
 an import loads the whole file in every session.
@@ -136,6 +140,8 @@ Two more rules:
   line in `ACTIVE.md`. A limit of one ability is in its entry, never repeated
   as debt.
 
+A request authorizes what it asks to happen now, under its stated conditions; preparing for approval authorizes preparation only. A reserved approval requires an owner reply granting the named slice; record its date and words. An agent-written record, tests, a review verdict, a status label or an answer to another question cannot grant it. If a reply is unclear or approves one slice and defers another, work on the approved slice, do as much as it allows, state your reading and say what still waits. A missing specification, format or lint warning, or an open technical name adds no condition. Record the reply where the method records the decision or approval.
+
 ## 5. The life of an item
 
 ```text
@@ -151,6 +157,8 @@ dropped                 ─► AHEAD (dropped), row moved to History, the entry 
 **Sorting what is not done.** If it belongs to the current work, it is in
 `ACTIVE.md`. If it can wait, it is in `AHEAD.md`. Debt that will bite the next
 work is in `ACTIVE.md`; debt that can wait is an idea in `AHEAD.md`.
+
+**Blockers.** Name what a blocker stops and its source: an owner message with an ISO date, a specification identifier or file path, or `failing check: <name>`. Check the source before honoring a carried-over blocker and say so. Implemented and tested with acceptance outstanding is not blocked; show acceptance as outstanding and continue unrelated work.
 
 **One current piece of work.** `ACTIVE.md` names one current piece of work at
 a time. Work that is blocked, or waits on the owner, moves to Pending or back
@@ -217,7 +225,7 @@ It reports:
   lines;
 - a section below a hot zone that the hot zone does not name;
 - a link in a hot zone, or a path in the atlas map, that points at nothing;
-- an `ACTIVE.md` without one of its fields;
+- an `ACTIVE.md` without one of its fields, or `BLOCKER_WITHOUT_SOURCE` when a blocker lacks a dated owner message, specification ID or file path, or failing check by name;
 - an identifier in the wrong form, a status, kind or state outside the lists,
   an identifier listed twice across the file's index tables, an index row
   without its entry or the reverse, and an old entry that still carries a
@@ -310,20 +318,31 @@ the first lists the files it would create from `templates/` for the small
 setup and for the full one, asks which, and proposes the check and the hook,
 creating nothing; the second, after the person answers, does the steps.
 
-1. Copy the chosen files from `templates/` into the repository root (keep
-   `docs/` as it is).
+1. Read each chosen file in `templates/` in this skill's folder and write
+   the project file from it, never by running a copy command (keep `docs/`
+   as it is).
 2. Fill `AGENTS.md`: purpose, commands, rules, any extra row in the index;
    in the small setup, remove the other three files' rows from the index,
    and their mentions from the warm-up and keep in step.
 3. Fill `ACTIVE.md` with the current work; in the full setup, `ATLAS.md` with
    the parts that exist, `ABILITIES.md` with what the product can do and
    `AHEAD.md` with what is planned.
-4. Copy `scripts/check_tracking.py` to `tools/`. Install the hook only if the
-   person said yes to it, or the request already says to install it: with no
-   commit hook yet, copy `scripts/pre-commit` to `.githooks/pre-commit` and run
+4. Inspect the existing hook and both the local and effective `core.hooksPath`.
+   Ask one question before running the installer: the check alone or the check and the hook?
+   Honor the choice if the request or adoption answer already supplies it.
+   Then run `python3 "<skill-folder>/scripts/install_check.py" --root .` once in place
+   from this skill's base directory, from the project root. The script
+   copies `scripts/check_tracking.py` to `tools/check_tracking.py` only when
+   absent; an existing check is left untouched and reported as matching or
+   differing from the plugin's. A later yes to the hook is a re-run with `--hook`.
+   Every shell hook change goes through the script; never write or copy the
+   hook by hand or run an agent copy command. Install the hook only if the
+   person said yes to it, or the request already says to install it: add
+   `--hook` to that command. With no commit hook yet, it installs the shipped
+   `scripts/pre-commit` as `.githooks/pre-commit` and sets
    `git config core.hooksPath .githooks`; with one (a hooks path, a file in
    `.git/hooks/`), add the line
-   `python3 tools/check_tracking.py --staged || true` to it instead of
+   `python3 tools/check_tracking.py --staged || true` to it through the script instead of
    replacing it, before the hook's first command: after the shebang when
    there is one, at the top when there is none. The added line never decides
    the hook's result unless a strict check is asked for. The check only
@@ -346,6 +365,14 @@ creating nothing; the second, after the person answers, does the steps.
    `entry: python3 tools/check_tracking.py --staged`, `language: system`,
    `pass_filenames: false`, `always_run: true` and `verbose: true`; for the
    strict check, `entry: python3 tools/check_tracking.py --staged --strict`.
+   The script never replaces a hook and stops for hook managers or non-shell
+   hooks: integrate those with their own step above. With no local hooks path
+   but a global or system one, `--hook` refuses before any change: the folder
+   is shared by other repositories and the owner must choose where the hook
+   goes. Without `--hook`, the check can still be installed. Installing reads the
+   plugin's folder, and a tool's permission mode may ask for access. On a
+   refused or failed step, report the command, what is installed and what is
+   missing; commit nothing half-written, and resolve the failure before resuming.
 5. Run `python3 tools/check_tracking.py` until it is clean; commit.
 
 **A repository with its own tracking files.** Use the first reply to survey

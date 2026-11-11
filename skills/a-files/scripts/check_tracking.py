@@ -552,9 +552,26 @@ def check(root, use_git, tree=None):
     if lines is not None:
         end = check_common(report, "ACTIVE.md", lines, ACTIVE_HOT_CAP)
         hot = lines[:end] if end else lines
-        for field in (() if end and home_of(report, "ACTIVE.md", lines, end) else ACTIVE_FIELDS):
+        active_home = end and home_of(report, "ACTIVE.md", lines, end)
+        for field in (() if active_home else ACTIVE_FIELDS):
             if not any(re.match(r"^\s*-\s*\*\*%s:\*\*" % re.escape(field), line) for line in hot):
                 report.error("ACTIVE.md", 1, "MISSING_FIELD", "the field **%s:** is missing from the hot zone" % field)
+
+        if not active_home:
+            for number, line in enumerate(hot, 1):
+                match = re.match(r"^\s*-\s*\*\*Blocked by:\*\*\s*(.*)", line, re.I)
+                if not match:
+                    continue
+                value = match.group(1).strip()
+                if (not value or re.fullmatch(r"(?:nothing|none)[^\w\s]*", value, re.I)
+                        or re.search(r"<[^>]+>", value)):
+                    continue
+                if not (re.search(r"\b\d{4}-\d{2}-\d{2}\b", value)
+                        or re.search(r"\b(?:UC|BR)-\d+\b", value, re.I)
+                        or re.search(r"(?:[\w.-]+/)*[\w.-]+\.(?:md|markdown|ya?ml|json)\b", value, re.I)
+                        or re.search(r"\bfailing check:\s*\S+", value, re.I)):
+                    report.error("ACTIVE.md", number, "BLOCKER_WITHOUT_SOURCE",
+                                 "name a dated owner message (YYYY-MM-DD), specification ID or file path, or failing check: <name>")
 
     abilities, abilities_kept = {}, False
     lines = files.get("ABILITIES.md")

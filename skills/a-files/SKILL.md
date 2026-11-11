@@ -19,7 +19,9 @@ Five files at the root give every agent and every person the same picture at
 the start of a session: the rules, the work in progress, what the product can
 do, what is ahead, and the map. They serve one owner directing agents, not a
 team tracker. This skill adopts them in a repository and keeps them true. The daily rules (the warm-up, keeping the files in step)
-live in the project's `AGENTS.md`, which every tool reads anyway.
+live in the project's `AGENTS.md`, which every tool reads anyway. Before the first change,
+the warm-up states Finished, Remaining, Blocked by and Next step in four short lines,
+using "nothing" for an empty line and checking `git log` and `git status`.
 
 The whole method, with its reasons: [references/method.md](references/method.md).
 
@@ -102,18 +104,30 @@ asks which (small or full, above), and proposes the check and the hook.
    remove it, adapt it to the new home, or keep it; under full alignment, the
    proposal is to adapt it. Show the files that would be created from the
    templates; never overwrite one, merge into it. Get a yes.
-5. **Apply.** Create the files from the templates and fill them from the
+5. **Apply.** Read each template in the skill folder and write the project
+   file from it, never by running a copy command. Fill the files from the
    repository, marking what you could not establish as a question. Merge the
    old content into the A-files and remove each merged old file. Then
    `python3 scripts/relink.py apply --move OLD NEW ...` moves what still has
    to move and rewrites the exact references. Settle each decision as the
    person chose, then verify until it reports no problem. Once the adoption
    record exists, use `python3 scripts/relink.py verify --move OLD NEW ... --keep docs/decisions/NNNN-adopt-the-a-files.md`.
-6. **Install the check.** Copy [scripts/check_tracking.py](scripts/check_tracking.py) to
-   `tools/check_tracking.py` (if that path exists, stop and ask). Before any
-   hook, look at what runs today: `git config core.hooksPath`, an existing
+6. **Install the check.** Before running the installer, look at what runs
+   today: `git config --local --get core.hooksPath`, `git config --get core.hooksPath`, an existing
    `.githooks/pre-commit` or `.git/hooks/pre-commit`, a hook manager (husky,
-   pre-commit, lefthook). Never replace a hook: with none, propose
+   pre-commit, lefthook). Ask one question first: the check alone or the check and the hook?
+   Honor a choice already supplied in the request or adoption answer.
+   Then run [scripts/install_check.py](scripts/install_check.py) once in place
+   from this skill's base directory, from the project root:
+   `python3 "<skill-folder>/scripts/install_check.py" --root .`, adding `--hook`
+   only when the person chose the shell hook. The script copies
+   [scripts/check_tracking.py](scripts/check_tracking.py) into `tools/check_tracking.py`
+   only when absent. An existing check is left untouched, with a report of
+   whether it matches or differs from the plugin's. A later yes to the hook
+   is a re-run with `--hook`; the existing check is still left untouched.
+   Every shell hook installation or reporting-line insertion goes through
+   this script; never write or copy a hook by hand or run an agent copy command.
+   Never replace a hook: with none, propose
    [scripts/pre-commit](scripts/pre-commit) as `.githooks/pre-commit` and
    `git config core.hooksPath .githooks`; with one, propose the one line
    `python3 tools/check_tracking.py --staged || true`, placed before the
@@ -135,6 +149,19 @@ asks which (small or full, above), and proposes the check and the hook.
    `entry: python3 tools/check_tracking.py --staged`, `language: system`,
    `pass_filenames: false`, `always_run: true` and `verbose: true`; for the
    strict check, `entry: python3 tools/check_tracking.py --staged --strict`.
+   Add `--hook` to the install command only for an agreed shell hook: the
+   script installs the shipped hook and sets `core.hooksPath` when none
+   exists, or inserts the reporting line first in an existing shell hook.
+   It never replaces a hook; it leaves an existing hook's mode and commands
+   intact. Hook managers and non-shell hooks need the separate step above;
+   the script stops rather than editing them. With no local hooks path but
+   a global or system one, `--hook` refuses before any change: that folder
+   is shared by other repositories, and the owner must choose where the hook
+   goes. Without `--hook`, the check can still be installed.
+   Installing reads this plugin's folder; the tool's permission mode may
+   ask for that access. On any refused or failed step, stop and report the
+   command, what is installed and what is missing; commit nothing half-written.
+   Resolve the reported access or failure before resuming.
    Hooks change how every commit
    behaves, so show the change and install it only after a yes that names it:
    the person's answer, or a request that already says to install the hook.
@@ -183,6 +210,7 @@ A-file whose changes are not staged.
 | `HOT_ZONE_TOO_LONG`, `AGENTS_TOO_LONG` | Move detail below the hot zone and point to it; keep `AGENTS.md` to rules and pointers |
 | `UNPOINTED_SECTION` | Name the section in the hot zone's `Below:` line |
 | `BROKEN_LINK`, `MISSING_PATH`, `BROKEN_SPEC` | Point the link or path at what exists, or remove it |
+| `BLOCKER_WITHOUT_SOURCE` | Name what the blocker stops and its dated owner message, specification ID or path, or failing check by name; check that the source still holds |
 | `MISSING_FIELD` | Add the field to ACTIVE's Now, with "none" when it is empty |
 | `BAD_ID`, `BAD_STATUS`, `BAD_KIND`, `DUPLICATE_ID`, `NO_ENTRY`, `NOT_IN_INDEX`, `NO_INDEX` | Make the index rows and the entries agree, with values from the lists; each identifier keeps one row |
 | `STATUS_MISMATCH` | The row holds the status: drop the old entry's Status line, or set it to the row's |

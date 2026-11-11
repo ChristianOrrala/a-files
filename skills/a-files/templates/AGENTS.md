@@ -5,11 +5,12 @@ code lives.>
 
 ## Warm-up
 
-At the start of every session, read in this order:
+At the start of every session, do the following in order:
 
-1. this file's hot zone (it ends at the line `<!-- hot zone ends -->`);
-2. the hot zones of `ACTIVE.md`, `ABILITIES.md`, `AHEAD.md` and `ATLAS.md`;
-3. `git log --oneline -15`.
+1. read this file's hot zone (it ends at the line `<!-- hot zone ends -->`);
+2. read the hot zones of `ACTIVE.md`, `ABILITIES.md`, `AHEAD.md` and `ATLAS.md`;
+3. read `git log --oneline -15`;
+4. before the first change, say where things stand in four short lines: **Finished**, **Remaining**, **Blocked by** and **Next step**, writing "nothing" where a line is empty. Check them against `git log` and `git status`, not only against `ACTIVE.md`. Before honoring a `Blocked by` line from an earlier session, check its named source and say whether it holds; a missing or invalid source makes the blocker a guess.
 
 Open anything else only when the task needs it; the index says where it is.
 
@@ -53,6 +54,7 @@ it (enable it once per clone: `git config core.hooksPath .githooks`).
 
 - **Always:** <what an agent must always do in this repository>
 - **Ask first:** <what needs the owner's yes: dependencies, schema changes, deletions, anything leaving the machine>
+- **Authorization:** A request authorizes what it asks to happen now, under its stated conditions; preparing for approval authorizes preparation only. A reserved approval requires an owner reply granting the named slice; record its date and words. An agent-written record, tests, a review verdict, a status label or an answer to another question cannot grant it. If a reply is unclear or approves one slice and defers another, work on the approved slice, do as much as it allows, state your reading and say what still waits. A missing specification, format or lint warning, or an open technical name adds no condition.
 - **Never:** <what an agent must never do: secrets in files, force-push, editing generated files>
 - **Say what a code means:** when you write to a person, follow every identifier with its title in parentheses, every time: `AB-009 (Export invoices)`, `AH-007 (Gift vouchers)`. Take the title from the file name, heading or table row, and look it up if you don't have it. This applies to messages only: files, commit lines, code markers and test names keep the identifier their format requires.
 
