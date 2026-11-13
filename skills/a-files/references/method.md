@@ -2,7 +2,7 @@
 
 *Five files every coding agent reads first.*
 
-Version 1.7.0, 2026-11-10
+Version 1.8.0, 2026-11-13
 
 A way for a repository to keep its rules, its current work, its abilities, its
 future and its map in five Markdown files at the root, so that any coding
@@ -261,6 +261,35 @@ it exits 2, and reads its exit code and its `path:line: ERROR CODE: message`
 lines (pairing P10), so the problem lines are the only lines there. The
 option, the exit codes, the codes and the line format change only with the
 pairing contract.
+
+**Summary, data and version.** A clean run prints nothing, so a run that
+inspected every file looks like one that inspected none. On request the check
+says more; each option is read-only and keeps the exit codes above:
+
+- `--summary` ends the run with one line on standard error, in place of the
+  line that counts the problems: `checked AGENTS.md, ACTIVE.md, ...: 0
+  problems`, with a file marked `absent`, `unreadable` or `(kept in <home>)`.
+- `--format json` prints one JSON object on standard output instead of the
+  problem lines and the notes. `schema` (1) and `a_files_version` say what
+  wrote it; `mode` (`working tree` or `staged`) and
+  `compared_with_last_commit` say how it read; `files` gives each A-file with
+  `present`, `readable` and its `home`; `findings` give `file`, `line`,
+  `severity` (`error`), `code` and `message`, and `problems` counts them;
+  `notes` hold the notes. Then what it parsed: `active.fields`, each field of
+  ACTIVE's Now with its `value` (indented lines below it joined in) and
+  `line`; `abilities` and `ahead_items`, one record per identifier with its
+  index row's `line`, the `section` it sits under and its `columns` as the
+  header names them, its `entry_line`, and from the entry `known_limits` and
+  `evidence` (abilities) or `belongs_to` (items), each a `value` and a `line`
+  or null. An entry with no row has no columns and a null line; a file kept at
+  another home gives no records. `registers` says, for `abilities` and
+  `ahead_items`, whether the check `read` the file's rows, and when not, the
+  `reason`: `absent`, `unreadable`, `kept_elsewhere`, or `no_hot_zone` (the
+  file has no marker, so its index cannot be told from its entries). An empty
+  list with `read` true means the register has no rows. The schema number
+  rises only when a key changes its meaning or goes away.
+- `--version` prints the version of the A-files the check came with, the
+  version of the plugin, so a project can tell which check it has installed.
 
 **Staged mode.** Run by hand, the check reads the working tree. With
 `--staged` it reads every A-file and every path it checks from the index,

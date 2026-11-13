@@ -51,8 +51,19 @@ refuses a commit. With --strict, 1 on problems, for a repository that chooses a
 strict pipeline. 2 on usage errors. 3 when it could not run: --staged without git
 or outside a git repository.
 
+On request, for a person or a program that must tell a clean run from one that inspected nothing (each read-only,
+none changes the exit codes):
+
+  - --summary ends the run with one line on stderr: the A-files it inspected, those absent or kept elsewhere, and
+    how many problems it found (in place of the line that counts the problems)
+  - --format json prints one JSON object on stdout instead of the problem lines and the notes: the check's version
+    and the schema of the object, the files it inspected, its findings and notes, and what it parsed (the fields of
+    ACTIVE's Now, the abilities and the AHEAD items with their columns and lines)
+  - --version prints the version of the A-files this check belongs to
+
 Usage:
-    check_tracking.py [--root DIR] [--no-git] [--staged] [--strict]
+    check_tracking.py [--root DIR] [--no-git] [--staged] [--strict] [--summary] [--format text|json]
+    check_tracking.py --version
 
 Requires Python 3.9+, standard library only; git for the comparison with the
 last commit (skipped with a note when git, the repository or the last commit is
@@ -60,12 +71,17 @@ unavailable) and for --staged.
 """
 import argparse
 import enum
+import json
 import os
 import re
 import subprocess
 import sys
 from collections import namedtuple
 
+# The version of the A-files this check ships with; a test keeps it equal to the plugin's manifests.
+A_FILES_VERSION = "1.8.0"
+# The shape of the --format json object; it rises only when a key changes its meaning or goes away.
+DATA_SCHEMA = 1
 MARKER = "<!-- hot zone ends -->"
 # Every hot zone is read at each session start; 100 lines each keeps the
 # warm-up near 400 lines with AGENTS.md.
@@ -93,6 +109,8 @@ TICKED = re.compile(r"`([^`\s]+)`")
 # A field line, bulleted with - or * or not at all, as the skills' reader of the A-files reads it.
 SPECS = re.compile(r"^\s*(?:[-*]\s*)?\*\*Specs:\*\*\s*(.*)$")
 HOME = re.compile(r"^\s*(?:[-*]\s*)?\*\*Home:\*\*\s*(?:\[[^\]]*\]\()?`?([^`)\s]+)`?\)?")
+# Any field line, `- **Label:** value`, for the data output.
+FIELD = re.compile(r"^\s*(?:[-*]\s*)?\*\*([^*:\n]+):\*\*\s*(.*?)\s*$")
 
 
 # Every git call here is local (no network); 60 seconds is the timeout the reference check (relink.py) and the
@@ -262,6 +280,11 @@ class Report:
         self.tree = tree or WorkTree(root)
         self.items = []
         self.notes = []
+        # What the check read, for --summary and --format json: {A-file: {present, readable, home}}, and the registers.
+        self.files = {}
+        self.parsed = {"active": {"fields": {}}, "abilities": [], "ahead_items": []}
+        # The registers whose rows the check read: an empty list means "no rows" only for these.
+        self.registers_read = set()
 
     def error(self, name, line, code, message):
         self.items.append((name, line, code, message))
@@ -269,11 +292,66 @@ class Report:
     def note(self, name, message):
         self.notes.append((name, message))
 
+    def findings(self):
+        return sorted(self.items, key=lambda i: (i[0], i[1], i[2]))
+
     def print(self):
-        for name, line, code, message in sorted(self.items, key=lambda i: (i[0], i[1], i[2])):
+        for name, line, code, message in self.findings():
             print("%s:%d: ERROR %s: %s" % (name, line, code, message))
         for name, message in self.notes:
             print("%sNOTE: %s" % (name + ": " if name else "", message), file=sys.stderr)
+
+    def summary(self):
+        """One line: the A-files inspected, those absent or kept elsewhere, and the number of problems."""
+        parts = []
+        for name in ("AGENTS.md",) + A_FILES:
+            state = self.files.get(name, {})
+            if not state.get("present"):
+                parts.append("%s absent" % name)
+            elif not state.get("readable"):
+                parts.append("%s unreadable" % name)
+            elif state.get("home"):
+                parts.append("%s (kept in %s)" % (name, state["home"]))
+            else:
+                parts.append(name)
+        count = len(self.items)
+        return "checked %s: %d problem%s" % (", ".join(parts), count, "" if count == 1 else "s")
+
+    def data(self, staged, compared):
+        """Everything the run found and read, as one object for --format json."""
+        return {
+            "schema": DATA_SCHEMA,
+            "a_files_version": A_FILES_VERSION,
+            "mode": "staged" if staged else "working tree",
+            "compared_with_last_commit": compared,
+            "files": [dict(file=name, **self.files.get(name, {"present": False, "readable": False, "home": None}))
+                      for name in ("AGENTS.md",) + A_FILES],
+            "problems": len(self.items),
+            "findings": [{"file": name, "line": line, "severity": "error", "code": code, "message": message}
+                         for name, line, code, message in self.findings()],
+            "notes": [{"file": name, "message": message} for name, message in self.notes],
+            "active": self.parsed["active"],
+            "abilities": self.parsed["abilities"],
+            "ahead_items": self.parsed["ahead_items"],
+            "registers": {key: self.register_state(name, key)
+                          for key, name in (("abilities", "ABILITIES.md"), ("ahead_items", "AHEAD.md"))},
+        }
+
+    def register_state(self, name, key):
+        """Whether the rows of a register were read, and why not: so that a register with no rows can be told from
+        one whose rows the check could not read as a register."""
+        if key in self.registers_read:
+            return {"read": True, "reason": None}
+        state = self.files.get(name, {})
+        if not state.get("present"):
+            reason = "absent"
+        elif not state.get("readable"):
+            reason = "unreadable"
+        elif state.get("home"):
+            reason = "kept_elsewhere"
+        else:
+            reason = "no_hot_zone"      # without the marker the check cannot tell the index from the entries
+        return {"read": False, "reason": reason}
 
 
 def unfenced(lines):
@@ -343,6 +421,65 @@ class Reference:
 
     def hint(self):
         return next((hint for hint in map(self.tree.missing_hint, self.places) if hint), "")
+
+
+def fields(lines, start=0, end=None):
+    """The field lines `- **Label:** value` from line start to end (0-based, end excluded), each with the indented
+    lines below it that continue it, joined by newlines: {label: {"value", "line"}}, the first of a label kept."""
+    end = len(lines) if end is None else end
+    found, running = {}, None
+    for i in range(start, end):
+        line = lines[i]
+        match = FIELD.match(line)
+        if match:
+            label = match.group(1).strip()
+            running = None if label in found else {"value": match.group(2), "line": i + 1}
+            if running is not None:
+                found[label] = running
+            continue
+        if running is not None and line[:1] in " \t" and line.strip():
+            running["value"] = (running["value"] + "\n" + line.strip()).strip()
+        elif line.strip():
+            running = None
+    return found
+
+
+def now_fields(lines, end):
+    """The fields of ACTIVE's Now: its `## Now` section in the hot zone, or the whole hot zone without one."""
+    hot = lines[:end] if end else lines
+    start = next((i + 1 for i, line in enumerate(hot) if re.match(r"^##\s+Now\s*$", line)), None)
+    if start is None:
+        return fields(hot)
+    stop = next((i for i in range(start, len(hot)) if hot[i].startswith("## ")), len(hot))
+    return fields(hot, start, stop)
+
+
+def register_data(lines, rows, pattern, wanted):
+    """The register as the check parsed it: one record per identifier, its first index row (line, the `## ` section
+    it sits under, its columns) and its entry (heading line, and each wanted field as {value, line} or None); an
+    entry with no row has line and section None and no columns. wanted: {key: field label}."""
+    under, current = [], None
+    for line in lines:
+        heading = re.match(r"^##\s+(.*?)\s*$", line)
+        current = heading.group(1) if heading else current
+        under.append(current)
+    heads = entries(lines, pattern)
+
+    def record(identifier, number, columns):
+        entry_line = heads[identifier][0][0] if identifier in heads else None
+        found = {}
+        if entry_line is not None:
+            stop = next((i for i in range(entry_line, len(lines)) if lines[i].startswith("#")), len(lines))
+            found = fields(lines, entry_line, stop)
+        item = {"id": identifier, "line": number, "section": under[number - 1] if number else None,
+                "columns": columns, "entry_line": entry_line}
+        item.update({key: found.get(label) for key, label in wanted.items()})
+        return item
+
+    items = [record(identifier, found[0][0], dict(found[0][1])) for identifier, found in rows.items()
+             if pattern.fullmatch(identifier)]
+    items += [record(identifier, None, {}) for identifier in heads if identifier not in rows]
+    return items
 
 
 def check_common(report, name, lines, cap, contract=True):
@@ -519,9 +656,11 @@ def check(root, use_git, tree=None):
         except (OSError, UnicodeDecodeError) as exc:
             # A file the check cannot read or decode is a problem like the others; its other checks are skipped.
             report.error(name, 0, "UNREADABLE", "cannot read the file: %s" % exc)
+            report.files[name] = {"present": True, "readable": False, "home": None}
             present.add(name)
             reported.add(name)
             continue
+        report.files[name] = {"present": lines is not None, "readable": lines is not None, "home": None}
         if lines is None:
             hint = report.tree.missing_hint(os.path.join(root, name))
             if name not in OPTIONAL or name in in_index:
@@ -553,6 +692,9 @@ def check(root, use_git, tree=None):
         end = check_common(report, "ACTIVE.md", lines, ACTIVE_HOT_CAP)
         hot = lines[:end] if end else lines
         active_home = end and home_of(report, "ACTIVE.md", lines, end)
+        report.files["ACTIVE.md"]["home"] = active_home or None
+        if not active_home:
+            report.parsed["active"]["fields"] = now_fields(lines, end)
         for field in (() if active_home else ACTIVE_FIELDS):
             if not any(re.match(r"^\s*-\s*\*\*%s:\*\*" % re.escape(field), line) for line in hot):
                 report.error("ACTIVE.md", 1, "MISSING_FIELD", "the field **%s:** is missing from the hot zone" % field)
@@ -577,17 +719,26 @@ def check(root, use_git, tree=None):
     lines = files.get("ABILITIES.md")
     if lines is not None:
         end = check_common(report, "ABILITIES.md", lines, HOT_CAP)
-        abilities_kept = bool(end and home_of(report, "ABILITIES.md", lines, end))
+        home = end and home_of(report, "ABILITIES.md", lines, end)
+        report.files["ABILITIES.md"]["home"] = home or None
+        abilities_kept = bool(home)
         if end and not abilities_kept:
             abilities = check_register(report, "ABILITIES.md", lines, AB_ID, ("ID", "Ability", "Status"), "Status", AB_STATUSES, end,
                                        use_git, rows_below=True)
+            report.parsed["abilities"] = register_data(lines, abilities, AB_ID,
+                                                       {"known_limits": "Known limits", "evidence": "Evidence"})
+            report.registers_read.add("abilities")
             check_specs(report, lines)
 
     lines = files.get("AHEAD.md")
     if lines is not None:
         end = check_common(report, "AHEAD.md", lines, HOT_CAP)
-        if end and not home_of(report, "AHEAD.md", lines, end):
+        home = end and home_of(report, "AHEAD.md", lines, end)
+        report.files["AHEAD.md"]["home"] = home or None
+        if end and not home:
             items = check_register(report, "AHEAD.md", lines, AH_ID, ("ID", "Title", "Kind", "State", "Ability"), "State", AH_STATES, end, use_git)
+            report.parsed["ahead_items"] = register_data(lines, items, AH_ID, {"belongs_to": "Belongs to"})
+            report.registers_read.add("ahead_items")
             for identifier, found in items.items():
                 line, row = found[0]
                 kind = row.get("Kind", "").strip("` ")
@@ -618,7 +769,9 @@ def check(root, use_git, tree=None):
     lines = files.get("ATLAS.md")
     if lines is not None:
         end = check_common(report, "ATLAS.md", lines, HOT_CAP)
-        if end and not home_of(report, "ATLAS.md", lines, end):
+        home = end and home_of(report, "ATLAS.md", lines, end)
+        report.files["ATLAS.md"]["home"] = home or None
+        if end and not home:
             maps = [(h, r) for h, r in tables(lines, 0, end) if "Part" in h and "Works through" in h]
             if not maps:
                 report.error("ATLAS.md", end, "NO_MAP", "the hot zone has no map table (Part, What it does, Works through, ...)")
@@ -640,6 +793,12 @@ def main(argv):
     parser.add_argument("--staged", action="store_true",
                         help="read the A-files and the paths they name from the git index, as the commit will hold them")
     parser.add_argument("--strict", action="store_true", help="exit 1 on problems (default: exit 0, problems are reported)")
+    parser.add_argument("--summary", action="store_true",
+                        help="end with one line on stderr: the A-files inspected and the number of problems")
+    parser.add_argument("--format", choices=("text", "json"), default="text",
+                        help="json: one object on stdout with the files inspected, the findings and the registers read")
+    parser.add_argument("--version", action="version", version="a-files %s" % A_FILES_VERSION,
+                        help="print the version of the A-files this check belongs to")
     args = parser.parse_args(argv)
     if not os.path.isdir(args.root):
         print("no such folder: %s" % args.root, file=sys.stderr)
@@ -659,9 +818,15 @@ def main(argv):
     report = check(root, state is Git.READY, tree)
     if state in (Git.UNAVAILABLE, Git.NO_COMMIT):
         report.note(None, "%s: identifiers are not compared with the last commit" % state.value)
-    report.print()
-    if report.items:
+    if args.format == "json":
+        print(json.dumps(report.data(args.staged, state is Git.READY), indent=2))
+    else:
+        report.print()
+    if args.summary:
+        print(report.summary(), file=sys.stderr)
+    elif report.items and args.format == "text":
         print("%d problem(s)" % len(report.items), file=sys.stderr)
+    if report.items:
         # The problems are the output; only a strict run turns them into a failure.
         return 1 if args.strict else 0
     return 0

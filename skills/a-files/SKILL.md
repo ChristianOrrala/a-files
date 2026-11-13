@@ -202,7 +202,11 @@ AHEAD, and it never holds up unrelated work, which can then start.
 
 `python3 tools/check_tracking.py` prints `path:line: ERROR CODE: message`; the
 commit hook runs it with `--staged`, on what the commit holds, and notes an
-A-file whose changes are not staged.
+A-file whose changes are not staged. A clean run prints nothing. To see what
+it inspected, add `--summary` (one closing line: the files and the number of
+problems) or `--format json` (the run as data, with the registers it read);
+`--version` names the A-files version it belongs to. None of them writes a
+file or changes the exit code.
 
 | Code | Fix |
 |---|---|

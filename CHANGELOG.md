@@ -2,6 +2,17 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 1.8.0 (2026-11-13)
+
+- **The check says what it inspected, on request** (0055). `--summary` ends the run with one line naming the A-files it inspected, those absent or kept elsewhere, and the number of problems. A clean run without it still prints nothing.
+- **The check as data.** `--format json` prints the run as one JSON object: the files inspected, the findings with file, line, severity, code and message, the notes, and what the check parsed: the fields of ACTIVE's Now, the abilities and the AHEAD items with their columns and lines, an ability's Known limits and Evidence, an item's Belongs to, and the home of a file kept elsewhere. The object carries a schema number.
+- **The check states its version.** `--version` prints it, and the JSON object carries it, so a project can tell which A-files it has installed.
+- **The data says which registers it read.** `registers` gives, for the abilities and the AHEAD items, whether the check read the file's rows and, when not, why: `absent`, `unreadable`, `kept_elsewhere` or `no_hot_zone`. An empty list then means a register with no rows, not one the check could not read.
+- **The pairing rule P2 says what it expects of an ability in progress** (0055): one whose use cases are all `Done` is reported; mark it `done`, or name in its `Specs` line the use case still to build. The contract reads the same in both products.
+- The default output, the line format and the exit codes are unchanged, with and without `--staged` and `--strict`; the new options write nothing.
+
+**What an upgrade asks of you:** update the plugin. For the new options in a project, refresh its installed check: preserve or remove the existing `tools/check_tracking.py` as appropriate, then re-run `scripts/install_check.py` against the project; the installer leaves an existing check untouched. The templates and the hook are unchanged, so nothing else needs copying.
+
 ## 1.7.0
 
 - Adoption runs `scripts/install_check.py` in place from the plugin folder. Choose the check alone or the check and hook first; the installer refuses to change a hooks folder shared through global or system configuration. Install commands quote the plugin path.

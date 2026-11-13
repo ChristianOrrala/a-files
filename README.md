@@ -14,7 +14,7 @@ They serve one owner directing agents, not a team tracker: one person decides
 the work, and the agents read and keep the same picture across sessions. A
 team that needs assignments and reviews keeps an issue tracker beside them.
 
-**Version 1.7.0.**
+**Version 1.8.0.**
 
 ## The five files
 
@@ -54,6 +54,9 @@ then on.
   report holds even when a model skips an instruction. A repository that
   wants a strict hook runs the check with `--staged --strict` (Install below
   gives the line for a hook of your own); by hand it reads the working tree.
+  A clean run prints nothing; `--summary` says what it inspected,
+  `--format json` gives the run and the registers it read as data, and
+  `--version` names the A-files version it belongs to.
 
 ## Install
 
