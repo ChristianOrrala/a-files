@@ -2,6 +2,15 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 1.8.1 (2026-11-14)
+
+- **A broken link in place of an A-file is unreadable, not missing.** The check reports it with `UNREADABLE` and names the link, where 1.8.0 reported the file as absent.
+- **Output never ends in an encoding error.** Under a legacy Windows code page or a C locale, the check, the installer and the relink script write a character the console cannot write as its escape (`→`) instead of stopping.
+- The installer and the relink script read git's answers as UTF-8, so a path with non-ASCII characters is read the same on every system.
+- The default output, the JSON object and the exit codes are otherwise unchanged.
+
+**What an upgrade asks of you:** update the plugin. To bring a project's installed check to 1.8.1, preserve or remove the existing `tools/check_tracking.py` as appropriate, then re-run `scripts/install_check.py` against the project.
+
 ## 1.8.0 (2026-11-13)
 
 - **The check says what it inspected, on request** (0055). `--summary` ends the run with one line naming the A-files it inspected, those absent or kept elsewhere, and the number of problems. A clean run without it still prints nothing.

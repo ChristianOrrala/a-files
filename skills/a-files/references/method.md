@@ -2,7 +2,7 @@
 
 *Five files every coding agent reads first.*
 
-Version 1.8.0, 2026-11-13
+Version 1.8.1, 2026-11-14
 
 A way for a repository to keep its rules, its current work, its abilities, its
 future and its map in five Markdown files at the root, so that any coding

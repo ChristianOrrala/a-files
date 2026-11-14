@@ -70,7 +70,9 @@ last commit (skipped with a note when git, the repository or the last commit is
 unavailable) and for --staged.
 """
 import argparse
+import codecs
 import enum
+import errno
 import json
 import os
 import re
@@ -79,7 +81,7 @@ import sys
 from collections import namedtuple
 
 # The version of the A-files this check ships with; a test keeps it equal to the plugin's manifests.
-A_FILES_VERSION = "1.8.0"
+A_FILES_VERSION = "1.8.1"
 # The shape of the --format json object; it rises only when a key changes its meaning or goes away.
 DATA_SCHEMA = 1
 MARKER = "<!-- hot zone ends -->"
@@ -166,8 +168,15 @@ class WorkTree:
         return []
 
     def read(self, name):
-        """The file's lines, or None when it is not a file; OSError or UnicodeDecodeError when it cannot be read."""
+        """The file's lines, or None when it is not a file; OSError or UnicodeDecodeError when it cannot be read, a link
+        that cannot be resolved in its place included, which is there and never a missing file."""
         path = os.path.join(self.root, name)
+        if os.path.lexists(path) and not os.path.exists(path):
+            try:
+                target = " to %s" % os.readlink(path)
+            except (OSError, ValueError, AttributeError):
+                target = ""
+            raise OSError(errno.ENOENT, "a link that cannot be resolved%s" % target, name)
         if not os.path.isfile(path):
             return None
         with open(path, encoding="utf-8") as handle:
@@ -832,5 +841,52 @@ def main(argv):
     return 0
 
 
+# The error handlers that never end a write in an encoding error. Every other one can: strict, surrogateescape (which
+# a C locale gives standard output), surrogatepass on an encoding other than UTF, and any a program registers.
+SAFE_ERRORS = ("backslashreplace", "namereplace", "xmlcharrefreplace", "replace", "ignore")
+ESCAPED = "+backslashreplace"
+
+
+def _escaping(errors):
+    """The name of an error handler that writes a character as the handler errors writes it, and as its Python escape
+    (\\u2192) where that handler would end the write in an error; registered on first use."""
+    name = errors + ESCAPED
+    try:
+        codecs.lookup_error(name)
+    except LookupError:
+        original = codecs.lookup_error(errors)
+
+        def handler(exc):
+            if not isinstance(exc, UnicodeEncodeError):
+                return original(exc)
+            one = UnicodeEncodeError(exc.encoding, exc.object, exc.start, exc.start + 1, exc.reason)
+            try:
+                return original(one)
+            except UnicodeEncodeError:
+                return codecs.backslashreplace_errors(one)
+
+        codecs.register_error(name, handler)
+    return name
+
+
+def writable_output(*streams):
+    """Let standard output and standard error (or the streams given) write any text: a character their encoding cannot
+    write, as on a legacy Windows code page or under a C locale, is written as its Python escape (\\u2192 for an
+    arrow) instead of ending the run in an encoding error. A stream keeps what its error handler does where that
+    handler writes a character: under surrogateescape, a name that is not text in the encoding is still written as its
+    bytes. A handler that never raises, and UTF with surrogatepass, are left as they are."""
+    for stream in streams or (sys.stdout, sys.stderr):
+        errors, encoding = getattr(stream, "errors", None), getattr(stream, "encoding", None) or ""
+        if not errors or errors in SAFE_ERRORS or errors.endswith(ESCAPED) or not hasattr(stream, "reconfigure"):
+            continue
+        try:
+            if errors == "surrogatepass" and codecs.lookup(encoding).name.startswith("utf"):
+                continue
+            stream.reconfigure(errors="backslashreplace" if errors == "strict" else _escaping(errors))
+        except (LookupError, ValueError, OSError):
+            pass
+
+
 if __name__ == "__main__":
+    writable_output()
     sys.exit(main(sys.argv[1:]))
