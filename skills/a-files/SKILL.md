@@ -151,7 +151,8 @@ asks which (small or full, above), and proposes the check and the hook.
    strict check, `entry: python3 tools/check_tracking.py --staged --strict`.
    Add `--hook` to the install command only for an agreed shell hook: the
    script installs the shipped hook and sets `core.hooksPath` when none
-   exists, or inserts the reporting line first in an existing shell hook.
+   exists, or inserts the reporting line first in an existing shell hook
+   that does not already run the check.
    It never replaces a hook; it leaves an existing hook's mode and commands
    intact. Hook managers and non-shell hooks need the separate step above;
    the script stops rather than editing them. With no local hooks path but
@@ -197,6 +198,19 @@ approval the ability gets its index row in `ABILITIES.md`, with status
 a plan goes into `docs/plans/` when the work spans sessions. `ACTIVE.md` holds
 one current piece of work: work that is blocked moves to Pending or back to
 AHEAD, and it never holds up unrelated work, which can then start.
+
+## Upgrade the installed check
+
+A project keeps the check it was given at adoption. To bring it to this
+skill's release, run, from the project root and this skill's base directory,
+`python3 "<skill-folder>/scripts/install_check.py" --root . --upgrade`.
+It replaces `tools/check_tracking.py` only when the earlier check is committed
+and unchanged since, so the earlier one stays in the project's history, and it
+names both releases. It refuses, and changes nothing, when the check is not
+committed as it stands, was changed by hand at this release, or comes from a
+later release than the skill's. Hooks are left alone unless `--hook` is given.
+Then run `python3 tools/check_tracking.py`: a newer check can report what the
+earlier one did not. Fix what it reports, and commit the check with those fixes.
 
 ## Fix what the check reports
 

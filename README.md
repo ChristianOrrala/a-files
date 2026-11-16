@@ -14,7 +14,7 @@ They serve one owner directing agents, not a team tracker: one person decides
 the work, and the agents read and keep the same picture across sessions. A
 team that needs assignments and reviews keeps an issue tracker beside them.
 
-**Version 1.8.1.**
+**Version 1.8.2.**
 
 ## The five files
 
@@ -120,7 +120,7 @@ spec-driven method.
 | `skills/a-files/references/method.md` | The method guide: the five files, hot zones, keeping in step, the check, adoption, naming, limits |
 | `skills/a-files/templates/` | A template for each file |
 | `skills/a-files/scripts/check_tracking.py` | The check (standard library only) |
-| `skills/a-files/scripts/install_check.py` | Installs the check and, with `--hook`, the agreed shell hook without replacing an existing hook |
+| `skills/a-files/scripts/install_check.py` | Installs the check and, with `--hook`, the agreed shell hook without replacing an existing hook; with `--upgrade`, brings an earlier check to this release |
 | `skills/a-files/scripts/pre-commit` | The git hook that runs the check before every commit |
 | `skills/a-files/scripts/relink.py` | Plans, applies and verifies file moves, with every reference to them |
 | `examples/minimal/` | A small invented project with every file filled in; the check passes on it |
@@ -154,10 +154,13 @@ python3 "skills/a-files/scripts/install_check.py" --root "/path/to/repo"
 If you agree to the shell hook too, add `--hook` to that command instead.
 With no hook it installs the shipped `.githooks/pre-commit` and sets
 `core.hooksPath .githooks`. With an existing shell hook, it inserts the line
-below first, preserving the hook's commands and mode. An existing
+below first, preserving the hook's commands and mode; a hook that already runs
+the check is left as it is. An existing
 `tools/check_tracking.py` is left untouched, with a report saying whether it
 matches or differs from the plugin's. For a later yes to the hook, re-run with `--hook`;
-the check is still left untouched. Every shell hook installation or
+the check is still left untouched. To bring an earlier check to the plugin's
+release, re-run with `--upgrade`: it replaces a check that is committed and
+unchanged since, names both releases, and refuses any other. Every shell hook installation or
 reporting-line insertion goes through the script; never write or copy the
 hook by hand. Hook managers and non-shell hooks need their own step; the
 installer stops rather than editing them. If only a global or system

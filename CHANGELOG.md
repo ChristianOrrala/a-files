@@ -2,6 +2,14 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 1.8.2 (2026-11-16)
+
+- **The installer upgrades an earlier check.** `install_check.py --upgrade` replaces a `tools/check_tracking.py` from an earlier release when it is committed and unchanged since; it names both releases and refuses a check changed by hand or from a later release.
+- **No second check in a hook that already runs it.** `install_check.py --hook` leaves an existing shell hook as it is when one of its commands already runs `tools/check_tracking.py`, and takes out a reporting line an earlier install put beside such a command. A check named only in a comment does not count.
+- The check itself, its default output, its JSON object and its exit codes are unchanged.
+
+**What an upgrade asks of you:** update the plugin. To bring a project's installed check to 1.8.2, run `scripts/install_check.py --upgrade` against the project.
+
 ## 1.8.1 (2026-11-14)
 
 - **A broken link in place of an A-file is unreadable, not missing.** The check reports it with `UNREADABLE` and names the link, where 1.8.0 reported the file as absent.

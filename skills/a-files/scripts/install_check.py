@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Install the check from this skill in place; --hook applies the agreed shell hook.
 
-    python3 "<skill-folder>/scripts/install_check.py" --root . [--hook]
+    python3 "<skill-folder>/scripts/install_check.py" --root . [--hook] [--upgrade]
 
-Existing checks are never overwritten. Existing shell hooks gain the reporting
-line before their commands; other hook formats need their own integration.
+An existing check is never overwritten, except with --upgrade: it then replaces
+an earlier check that is committed and unchanged since, so the earlier one stays
+in the project's history. Existing shell hooks gain the reporting
+line before their commands, unless a command of theirs already runs the check;
+other hook formats need their own integration.
 """
 import argparse
 import codecs
@@ -16,6 +19,14 @@ import sys
 
 HERE = Path(__file__).resolve().parent
 LINE = "python3 tools/check_tracking.py --staged || true\n"
+CHECK_RUN = re.compile(r"tools/check_tracking\.py\b")
+
+
+def runs_the_check(text):
+    """Whether a shell hook already runs the check in a command of its own: a line that names
+    tools/check_tracking.py, is not a comment, and is not the reporting line this installer adds."""
+    return any(CHECK_RUN.search(line) and not line.lstrip().startswith("#") and line.rstrip("\r\n") != LINE.rstrip()
+               for line in text.splitlines())
 
 
 def git(root, *args):
@@ -26,7 +37,39 @@ def git(root, *args):
     return done.stdout.strip()
 
 
-def install(root, with_hook):
+VERSION = re.compile(r'^A_FILES_VERSION = "(\d+(?:\.\d+)*)"', re.MULTILINE)
+
+
+def release(content):
+    """The version of the A-files a check names, as text, or None when it names none (a check older than 1.8.0, or a
+    file that is not the check)."""
+    found = VERSION.search(content.decode("utf-8", errors="replace"))
+    return found.group(1) if found else None
+
+
+def can_upgrade(root, check, shipped):
+    """Refuse, before anything is written, an upgrade that could lose work: the earlier check must be a file the
+    project's history holds as it stands, from a release earlier than the plugin's. Returns the release it names."""
+    name = "tools/check_tracking.py"
+    if check.is_symlink() or not check.is_file():
+        raise ValueError("the existing %s is not a regular file; inspect it before upgrading" % name)
+    tracked = subprocess.run(["git", "-C", str(root), "ls-files", "--error-unmatch", "--", name],
+                             capture_output=True, text=True, encoding="utf-8", errors="surrogateescape")
+    if tracked.returncode or git(root, "status", "--porcelain", "--", name):
+        raise ValueError("the existing %s is not committed as it stands; commit it first, so the earlier check "
+                         "stays in the history" % name)
+    earlier, ours = release(check.read_bytes()), release(shipped)
+    if earlier and ours:
+        if earlier == ours:
+            raise ValueError("the existing %s names the plugin's own release (%s) and differs from it: it was "
+                             "changed by hand; inspect it before upgrading" % (name, ours))
+        if tuple(map(int, earlier.split("."))) > tuple(map(int, ours.split("."))):
+            raise ValueError("the existing %s is from a later release (%s) than this plugin (%s); update the "
+                             "plugin instead" % (name, earlier, ours))
+    return earlier
+
+
+def install(root, with_hook, upgrade=False):
     root = root.resolve()
     git(root, "rev-parse", "--git-dir")
     check = root / "tools/check_tracking.py"
@@ -40,6 +83,7 @@ def install(root, with_hook):
     if not hook.is_absolute():
         hook = root / hook
     original = None
+    already = False
     set_path = False
     if with_hook:
         if configured.returncode == 1:
@@ -69,11 +113,15 @@ def install(root, with_hook):
                     r"#!\s*(?:/\S*/(?:sh|bash|dash|ksh|zsh)|/usr/bin/env\s+(?:sh|bash|dash|ksh|zsh))(?:\s+.*)?", first):
                 raise ValueError("existing hook is not a shell hook; propose its own check step")
             # Keep one reporting line first even if an earlier integration
-            # put it last, where it could swallow the owner's refusal.
+            # put it last, where it could swallow the owner's refusal. A hook
+            # that already runs the check in a command of its own gets no
+            # line, and loses one an earlier integration added beside it.
+            already = runs_the_check(text)
             lines = [line for line in text.splitlines(keepends=True) if line.rstrip("\r\n") != LINE.rstrip()]
-            if first.startswith("#!") and not lines[0].endswith("\n"):
-                lines[0] += "\n"
-            lines.insert(1 if first.startswith("#!") else 0, LINE)
+            if not already:
+                if first.startswith("#!") and not lines[0].endswith("\n"):
+                    lines[0] += "\n"
+                lines.insert(1 if first.startswith("#!") else 0, LINE)
             content = "".join(lines).encode("utf-8")
         else:
             content = (HERE / "pre-commit").read_bytes()
@@ -82,7 +130,13 @@ def install(root, with_hook):
     check_content = (HERE / "check_tracking.py").read_bytes()
     check_matches = check_exists and check.is_file() and check.read_bytes() == check_content
     check_created = hook_changed = False
+    earlier_content = None
+    if upgrade and check_exists and not check_matches:
+        earlier = can_upgrade(root, check, check_content)
+        earlier_content = check.read_bytes()
     try:
+        if earlier_content is not None:
+            check.write_bytes(check_content)
         if not check_exists:
             check.parent.mkdir(parents=True, exist_ok=True)
             with check.open("xb") as handle:
@@ -95,7 +149,7 @@ def install(root, with_hook):
                     hook_changed = True
                     handle.write(content)
                 hook.chmod(0o755)
-            else:
+            elif content != original:
                 hook_changed = True
                 hook.write_bytes(content)
             if set_path:
@@ -108,21 +162,40 @@ def install(root, with_hook):
                 hook.write_bytes(original)
         if check_created:
             check.unlink()
+        if earlier_content is not None:
+            check.write_bytes(earlier_content)
         raise
-    if check_exists:
+    if earlier_content is not None:
+        print("Upgraded tools/check_tracking.py from %s to %s; the earlier check is in the project's history." % (
+            "a-files " + earlier if earlier else "a check that names no release",
+            "a-files " + (release(check_content) or "the plugin's release")))
+    elif check_exists:
         print("Left tools/check_tracking.py untouched; it " +
               ("matches the plugin." if check_matches else "differs from the plugin (or is not a readable file)."))
     else:
         print("Installed tools/check_tracking.py from the plugin folder.")
     if with_hook:
         label = os.path.relpath(hook, root)
-        print(("Extended existing " if original is not None else "Installed ") + label + ".")
+        if original is None:
+            print("Installed " + label + ".")
+        elif already and content == original:
+            print("Left " + label + " untouched; it already runs the check.")
+        elif already:
+            print("Took the second reporting line out of " + label + "; it already runs the check.")
+        else:
+            print("Extended existing " + label + ".")
         if set_path:
             print("Set core.hooksPath .githooks.")
         print("No existing hook replaced. No A-files created or committed.")
     else:
         print("Hook not installed; no hook or git configuration changed.")
-        if os.path.lexists(hook):
+        try:
+            existing = hook.read_text(encoding="utf-8") if os.path.lexists(hook) else None
+        except (OSError, UnicodeDecodeError):
+            existing = ""
+        if existing is not None and runs_the_check(existing):
+            print("The existing hook already runs the check; nothing to propose.")
+        elif existing is not None:
             print("Propose the reporting line first in the existing shell hook: " + LINE.strip())
         else:
             print("With no existing hook or manager, propose the shipped .githooks/pre-commit "
@@ -134,9 +207,11 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=".")
     parser.add_argument("--hook", action="store_true", help="apply the explicitly agreed shell hook integration")
+    parser.add_argument("--upgrade", action="store_true",
+                        help="replace an earlier check that is committed and unchanged since")
     args = parser.parse_args(argv)
     try:
-        install(Path(args.root), args.hook)
+        install(Path(args.root), args.hook, args.upgrade)
     except (OSError, ValueError) as error:
         print("Install failed: %s. Nothing installed; no existing hook replaced. "
               "Do not commit a partial adoption; inspect git status before retrying." % error, file=sys.stderr)

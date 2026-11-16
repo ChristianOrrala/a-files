@@ -2,7 +2,7 @@
 
 *Five files every coding agent reads first.*
 
-Version 1.8.1, 2026-11-14
+Version 1.8.2, 2026-11-16
 
 A way for a repository to keep its rules, its current work, its abilities, its
 future and its map in five Markdown files at the root, so that any coding
@@ -364,6 +364,9 @@ creating nothing; the second, after the person answers, does the steps.
    copies `scripts/check_tracking.py` to `tools/check_tracking.py` only when
    absent; an existing check is left untouched and reported as matching or
    differing from the plugin's. A later yes to the hook is a re-run with `--hook`.
+   A later release of the check is a re-run with `--upgrade`: it replaces an
+   earlier check that is committed and unchanged since, names both releases,
+   and refuses a check the project's history does not hold as it stands.
    Every shell hook change goes through the script; never write or copy the
    hook by hand or run an agent copy command. Install the hook only if the
    person said yes to it, or the request already says to install it: add
