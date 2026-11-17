@@ -2,6 +2,16 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 2.0.1 (2026-11-17)
+
+A text release: the install and upgrade steps are complete enough to follow without help. No script behaves differently; only the version lines change.
+
+- **Upgrading from 1.x.** The README has the commands per tool to leave the marketplace `christian-orrala` for `christianorrala`, and how to bring a project's check to this release with `install_check.py --upgrade`.
+- **Kiro CLI runs hooks only on its V3 engine** (`kiro-cli settings chat.agentEngine v3`). The README no longer says Kiro installs the plugin through its own plugin command: it takes the skill folder and the hook file.
+- **OpenCode needs a full copy of the plugin.** `opencode plugin add` fetches only `hooks/opencode`, without the hook script. The README shows a clone of the repository and the absolute path to list in `opencode.json`.
+
+**What an upgrade asks of you:** update the plugin; in Kiro, set the V3 engine if you have not.
+
 ## 2.0.0 (2026-11-17)
 
 The A-files get agent hooks of their own, carried by the plugin.

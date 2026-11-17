@@ -14,7 +14,7 @@ They serve one owner directing agents, not a team tracker: one person decides
 the work, and the agents read and keep the same picture across sessions. A
 team that needs assignments and reviews keeps an issue tracker beside them.
 
-**Version 2.0.0.**
+**Version 2.0.1.**
 
 ## The five files
 
@@ -74,9 +74,47 @@ codex plugin marketplace add ChristianOrrala/agents
 codex plugin add a-files@christianorrala
 ```
 
-Other agents that read Agent Plugins (Kiro, Cursor, GitHub Copilot) install
-this folder through their own plugin command. Or copy `skills/a-files/` into
-the folder where your agent finds skills:
+Then approve each hook once in Codex's `/hooks`.
+
+Kiro CLI and OpenCode run the plugin from a full copy, kept in one place:
+
+```sh
+git clone --branch v2.0.1 https://github.com/ChristianOrrala/a-files.git ~/.local/share/agent-plugins/a-files
+```
+
+- **Kiro CLI:** link the copy's `skills/a-files` folder as
+  `~/.kiro/skills/a-files`, copy `hooks/kiro/a-files.json` to
+  `~/.kiro/hooks/`, trust the workspace, and set the V3 engine once:
+  `kiro-cli settings chat.agentEngine v3`. Kiro runs hooks on no other engine.
+- **OpenCode:** add the copy's `hooks/opencode` folder, as an absolute path,
+  to the `plugins` array of `opencode.json`. Not `opencode plugin add`: it
+  fetches only that folder, and the module then finds no hook script and
+  stays silent.
+
+**Upgrading from 1.x.** Releases before 2.0.0 came from the marketplace
+`christian-orrala`. On each computer, once:
+
+```sh
+claude plugin uninstall a-files@christian-orrala
+claude plugin marketplace remove christian-orrala
+claude plugin marketplace add ChristianOrrala/agents
+claude plugin install a-files@christianorrala
+
+codex plugin remove a-files@christian-orrala
+codex plugin marketplace remove christian-orrala
+codex plugin marketplace add ChristianOrrala/agents
+codex plugin add a-files@christianorrala
+```
+
+A step for a tool or marketplace you never installed fails harmlessly. Kiro
+CLI and OpenCode: as above. In a project, nothing has to change; to bring its
+check to this release, re-run the check installer with `--upgrade` (see
+Without an agent, below), and commit the result with the line
+`No behavior change: none, tooling only.` when the project also uses a
+spec-driven commit guard.
+
+Other agents that read skill folders (Cursor, GitHub Copilot, Antigravity)
+copy `skills/a-files/` into the folder where your agent finds skills:
 
 | Agent | Skills folder |
 |---|---|
@@ -125,8 +163,8 @@ silent elsewhere. The git hook stays; it is the check that holds for everyone.
 |---|---|
 | Claude Code | Install the plugin. |
 | Codex | Install from the marketplace, then approve each hook once in `/hooks`; an unapproved hook is skipped without a word. |
-| Kiro CLI | Copy the skill folder to `~/.kiro/skills/a-files/` and `hooks/kiro/a-files.json` to `~/.kiro/hooks/`; trust the workspace. |
-| OpenCode | List the plugin's `hooks/opencode` folder in the `plugins` array of `opencode.json`, in the project or globally. |
+| Kiro CLI | Link or copy the skill folder to `~/.kiro/skills/a-files/` and `hooks/kiro/a-files.json` to `~/.kiro/hooks/`; trust the workspace; hooks run only on the V3 engine (`kiro-cli settings chat.agentEngine v3`). |
+| OpenCode | List the `hooks/opencode` folder of a full copy of the plugin in the `plugins` array of `opencode.json`, in the project or globally; `opencode plugin add` fetches that folder alone, without the hook script. |
 
 ## What's in the folder
 

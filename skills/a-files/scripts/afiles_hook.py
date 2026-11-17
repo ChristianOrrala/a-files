@@ -21,7 +21,7 @@ import select
 import subprocess
 import sys
 
-A_FILES_VERSION = "2.0.0"
+A_FILES_VERSION = "2.0.1"
 MARKER = "<!-- hot zone ends -->"
 LIMIT = 3900
 MAX_FINDINGS = 5

@@ -232,8 +232,9 @@ Turning them on: Claude Code, with the plugin. Codex, install from the
 marketplace, then approve each hook once in `/hooks` (an unapproved hook is
 skipped without a word). Kiro CLI, copy the skill folder to
 `~/.kiro/skills/a-files/` and `hooks/kiro/a-files.json` to `~/.kiro/hooks/`,
-and trust the workspace. OpenCode, list the plugin's `hooks/opencode` folder in
-the `plugins` array of `opencode.json`, in the project or globally.
+and trust the workspace; hooks run only on Kiro's V3 engine. OpenCode, list the `hooks/opencode` folder of a full copy of the plugin in
+the `plugins` array of `opencode.json`, in the project or globally (`opencode plugin add` fetches that folder alone,
+without the hook script).
 
 ## Fix what the check reports
 
