@@ -1,0 +1,25 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "a-files-session-note",
+      "trigger": "SessionStart",
+      "enabled": true,
+      "timeout": 15,
+      "action": {
+        "type": "command",
+        "command": "[ -f \"$HOME/.kiro/skills/a-files/scripts/afiles_hook.py\" ] && python3 \"$HOME/.kiro/skills/a-files/scripts/afiles_hook.py\" session-start --emit kiro; exit 0"
+      }
+    },
+    {
+      "name": "a-files-finish-check",
+      "trigger": "Stop",
+      "enabled": true,
+      "timeout": 40,
+      "action": {
+        "type": "command",
+        "command": "[ -f \"$HOME/.kiro/skills/a-files/scripts/afiles_hook.py\" ] && python3 \"$HOME/.kiro/skills/a-files/scripts/afiles_hook.py\" before-stop --emit kiro; exit 0"
+      }
+    }
+  ]
+}

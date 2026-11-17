@@ -1,0 +1,8 @@
+{
+  "name": "a-files-opencode-hooks",
+  "version": "2.0.0",
+  "type": "module",
+  "main": "index.js",
+  "private": true,
+  "description": "The a-files agent hooks for OpenCode: a light note at session start and the check's findings before the stop."
+}

@@ -212,6 +212,29 @@ later release than the skill's. Hooks are left alone unless `--hook` is given.
 Then run `python3 tools/check_tracking.py`: a newer check can report what the
 earlier one did not. Fix what it reports, and commit the check with those fixes.
 
+## Agent hooks
+
+The plugin carries two agent hooks, in `hooks/` beside the skill, both run by
+[scripts/afiles_hook.py](scripts/afiles_hook.py):
+
+- at session start, a note: before the first edit, say where things stand in
+  four short lines (Finished, Remaining, Blocked by, Next step), checked
+  against git;
+- at the end of a turn, the check's findings, each sent once per session as a
+  note for the agent. It never asks the owner or stops the work: the agent
+  aligns the files or lists the findings in its handoff.
+
+Both act only where `ACTIVE.md` carries the hot-zone marker. The commit hook above stays: it is the check that
+holds for everyone; the agent hooks are earlier feedback. With a
+specification method's plugin also installed, these two come from here only.
+
+Turning them on: Claude Code, with the plugin. Codex, install from the
+marketplace, then approve each hook once in `/hooks` (an unapproved hook is
+skipped without a word). Kiro CLI, copy the skill folder to
+`~/.kiro/skills/a-files/` and `hooks/kiro/a-files.json` to `~/.kiro/hooks/`,
+and trust the workspace. OpenCode, list the plugin's `hooks/opencode` folder in
+the `plugins` array of `opencode.json`, in the project or globally.
+
 ## Fix what the check reports
 
 `python3 tools/check_tracking.py` prints `path:line: ERROR CODE: message`; the

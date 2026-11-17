@@ -2,6 +2,20 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 2.0.0 (2026-11-17)
+
+The A-files get agent hooks of their own, carried by the plugin.
+
+- **Two hooks.** At session start, a note for the agent: before the first edit, say where things stand in four short lines (Finished, Remaining, Blocked by, Next step), checked against git. At the end of a turn, what the check reports, each finding once per session, as a note for the agent: it asks the owner nothing and never stops the work. Both run `scripts/afiles_hook.py`.
+- **Only where the A-files are adopted.** They act in a project whose `ACTIVE.md` carries the hot-zone marker. Elsewhere, and outside git, they print nothing, exit 0 and write no file.
+- **Four tools.** `hooks/hooks.json` serves Claude Code (on with the plugin) and Codex (approve each hook once in `/hooks`); `hooks/kiro/a-files.json` goes in `~/.kiro/hooks/` with the skill folder in `~/.kiro/skills/a-files/`; `hooks/opencode/` is listed in the `plugins` array of `opencode.json`. Seen firing on Claude Code 2.1.326, Codex 0.167.0, Kiro CLI 3.3.0 and OpenCode 2.3.0.
+- **With a specification method installed too,** the note and the findings come from this plugin only, so each arrives once.
+- **The root `plugin.json` declares no `$schema`.** Codex loads no plugin hooks from a plugin whose root manifest declares it.
+- The check, the installer and the commit hook are unchanged; the commit hook is still the check that holds for everyone.
+- **Install lines name the catalog `ChristianOrrala/agents`,** marketplace `christianorrala` (`/plugin install a-files@christianorrala`). The marketplace `christian-orrala` in `ChristianOrrala/plugins` still lists the plugin; to move, remove it and add the new one, then install again.
+
+**What an upgrade asks of you:** update the plugin and turn its hooks on in your tool. Nothing changes in a project.
+
 ## 1.8.2 (2026-11-16)
 
 - **The installer upgrades an earlier check.** `install_check.py --upgrade` replaces a `tools/check_tracking.py` from an earlier release when it is committed and unchanged since; it names both releases and refuses a check changed by hand or from a later release.

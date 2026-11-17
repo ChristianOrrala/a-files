@@ -2,7 +2,7 @@
 
 *Five files every coding agent reads first.*
 
-Version 1.8.2, 2026-11-16
+Version 2.0.0, 2026-11-17
 
 A way for a repository to keep its rules, its current work, its abilities, its
 future and its map in five Markdown files at the root, so that any coding
@@ -315,6 +315,14 @@ git config core.hooksPath .githooks
 
 The hook reads what is staged, so its report describes the commit; a change
 left unstaged is noted, not counted.
+
+**The agent hooks.** The plugin also carries two agent hooks (`hooks/`, run by
+`scripts/afiles_hook.py`): at session start, a note to state Finished,
+Remaining, Blocked by and Next step before the first edit; at the end of a turn,
+the check's findings, each once per session, as a note for the agent that asks
+nothing of the owner and never stops the work. They act only where `ACTIVE.md`
+carries the hot-zone marker. They are earlier feedback; the commit hook above
+is still the check that holds for everyone.
 
 ## 9. Wiring each agent
 

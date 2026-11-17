@@ -61,6 +61,11 @@ With another method, the row names that method's folder.
   no part in the pairing: no `Specs` line is read, and the specification side
   says so instead of checking statuses.
 
+The plugin's agent hooks send the note before the first edit and the check's
+findings at the end of a turn. With a specification method installed too, those
+two come from here only; the other side's hooks leave them out, so each arrives
+once.
+
 ## What the specification side does
 
 Its router reads ACTIVE's current work and AHEAD's Next up (P3) and shows the

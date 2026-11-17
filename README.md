@@ -14,7 +14,7 @@ They serve one owner directing agents, not a team tracker: one person decides
 the work, and the agents read and keep the same picture across sessions. A
 team that needs assignments and reviews keeps an issue tracker beside them.
 
-**Version 1.8.2.**
+**Version 2.0.0.**
 
 ## The five files
 
@@ -63,15 +63,15 @@ then on.
 Claude Code:
 
 ```text
-/plugin marketplace add ChristianOrrala/plugins
-/plugin install a-files@christian-orrala
+/plugin marketplace add ChristianOrrala/agents
+/plugin install a-files@christianorrala
 ```
 
 Codex:
 
 ```text
-codex plugin marketplace add ChristianOrrala/plugins
-codex plugin add a-files@christian-orrala
+codex plugin marketplace add ChristianOrrala/agents
+codex plugin add a-files@christianorrala
 ```
 
 Other agents that read Agent Plugins (Kiro, Cursor, GitHub Copilot) install
@@ -112,6 +112,22 @@ installs the git hook.
 The skill also links abilities to specifications when the project uses a
 spec-driven method.
 
+## Agent hooks
+
+The plugin carries two agent hooks, run by `skills/a-files/scripts/afiles_hook.py`.
+At session start the agent gets a note to say where things stand in four short
+lines before its first edit. At the end of a turn it gets what the check
+reports, each finding once per session, as a note for the agent: no question,
+no block. Both act only where `ACTIVE.md` carries the hot-zone marker and stay
+silent elsewhere. The git hook stays; it is the check that holds for everyone.
+
+| Tool | Turn them on |
+|---|---|
+| Claude Code | Install the plugin. |
+| Codex | Install from the marketplace, then approve each hook once in `/hooks`; an unapproved hook is skipped without a word. |
+| Kiro CLI | Copy the skill folder to `~/.kiro/skills/a-files/` and `hooks/kiro/a-files.json` to `~/.kiro/hooks/`; trust the workspace. |
+| OpenCode | List the plugin's `hooks/opencode` folder in the `plugins` array of `opencode.json`, in the project or globally. |
+
 ## What's in the folder
 
 | Path | What it is |
@@ -121,6 +137,8 @@ spec-driven method.
 | `skills/a-files/templates/` | A template for each file |
 | `skills/a-files/scripts/check_tracking.py` | The check (standard library only) |
 | `skills/a-files/scripts/install_check.py` | Installs the check and, with `--hook`, the agreed shell hook without replacing an existing hook; with `--upgrade`, brings an earlier check to this release |
+| `skills/a-files/scripts/afiles_hook.py` | The agent hooks: the session-start note and the findings at the end of a turn |
+| `hooks/` | The hook files for Claude Code and Codex, Kiro CLI and OpenCode |
 | `skills/a-files/scripts/pre-commit` | The git hook that runs the check before every commit |
 | `skills/a-files/scripts/relink.py` | Plans, applies and verifies file moves, with every reference to them |
 | `examples/minimal/` | A small invented project with every file filled in; the check passes on it |
