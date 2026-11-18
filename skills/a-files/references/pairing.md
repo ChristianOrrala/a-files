@@ -27,7 +27,7 @@ joining twice changes nothing.
 | P7 | The session start | The state shown when a session starts includes the current work and the Debt from `ACTIVE.md`, and the Next up list from `AHEAD.md`. |
 | P8 | `docs/decisions/` | Decision records follow the A-files naming: four digits, then the subject. |
 | P9 | `AHEAD.md` | A drift the person chose to align later, when asked at the end of an agent's turn, becomes one AHEAD item: an index row with the next free identifier, the drift as its title, kind `idea`, state `open` and `—` in every other column, and an entry under `## Items` with **What** (the drift), **Why** (the person chose to align it later, with the date) and **Write-up** `none`. The same drift is recorded once. While `AHEAD.md` names a **Home:**, or has no index or no Items section, the drift goes to the specification side's own open-work list instead. |
-| P10 | `tools/check_tracking.py` | The specification side's end-of-turn question reads the A-files check only through its command line, so that command line is part of this contract: the question runs the check with `--strict`, and again without it when the check exits 2 (an earlier check that does not know the option); exit 0 means the A-files are clean and nothing is asked; exit 1 means problems, each printed as one line `path:line: ERROR CODE: message`; any other exit code means the check could not run, and nothing is asked. A message names its subject as an identifier, a quoted or bold name, or a path, and a number in it is a count or a position, so a finding whose count or position changes is the same finding. |
+| P10 | `tools/check_tracking.py` | Whatever reads the A-files check from outside its code (the a-files plugin's end-of-turn hook, or a tool of the specification side) reads it only through its command line, so that command line is part of this contract: the reader runs the check with `--strict`, and again without it when the check exits 2 (an earlier check that does not know the option); exit 0 means the A-files are clean and nothing is sent; exit 1 means problems, each printed as one line `path:line: ERROR CODE: message`; any other exit code means the check could not run, and nothing is sent. A message names its subject as an identifier, a quoted or bold name, or a path, and a number in it is a count or a position, so a finding whose count or position changes is the same finding. |
 <!-- pairing contract: end -->
 
 ## The joining edits
@@ -75,6 +75,7 @@ second; with `ABILITIES.md`, its use-case mapping suggests the ability each new
 use case joins; its
 end-of-turn question records a drift the person puts off as an AHEAD item in
 the shape P9 states: outside setup, its one edit to an A-file, and only on the
-person's answer. That question reads this side's check through its command line
-and its output lines alone (P10): changing the option, the exit codes or the
-line format is a change to the contract.
+person's answer. It does not run this side's check: the A-files' findings at
+the end of a turn come from this side's hook, which reads the check through its
+command line and its output lines alone (P10); changing the option, the exit
+codes or the line format is a change to the contract.

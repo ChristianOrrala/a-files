@@ -81,7 +81,7 @@ import sys
 from collections import namedtuple
 
 # The version of the A-files this check ships with; a test keeps it equal to the plugin's manifests.
-A_FILES_VERSION = "2.0.1"
+A_FILES_VERSION = "2.1.0"
 # The shape of the --format json object; it rises only when a key changes its meaning or goes away.
 DATA_SCHEMA = 1
 MARKER = "<!-- hot zone ends -->"
@@ -746,7 +746,7 @@ def check(root, use_git, tree=None):
         report.files["AHEAD.md"]["home"] = home or None
         if end and not home:
             items = check_register(report, "AHEAD.md", lines, AH_ID, ("ID", "Title", "Kind", "State", "Ability"), "State", AH_STATES, end, use_git)
-            report.parsed["ahead_items"] = register_data(lines, items, AH_ID, {"belongs_to": "Belongs to"})
+            report.parsed["ahead_items"] = register_data(lines, items, AH_ID, {"belongs_to": "Belongs to", "what": "What", "why": "Why"})
             report.registers_read.add("ahead_items")
             for identifier, found in items.items():
                 line, row = found[0]
@@ -764,7 +764,8 @@ def check(root, use_git, tree=None):
                     elif ability not in abilities:
                         report.error("AHEAD.md", line, "UNKNOWN_ABILITY", "%s names %s, which ABILITIES.md does not have" % (identifier, ability))
                 write_up = row.get("Write-up", "")
-                for target in LINK.findall(write_up) + [t for t in TICKED.findall(write_up) if is_path(t)]:
+                for target in [t for t in LINK.findall(write_up) if not t.startswith(("http:", "https:", "mailto:"))] + \
+                        [t for t in TICKED.findall(write_up) if is_path(t)]:
                     reference = Reference(report.tree, root, target)
                     if not reference.exists():
                         report.error("AHEAD.md", line, "BROKEN_LINK", "%s: write-up %s points at nothing%s"

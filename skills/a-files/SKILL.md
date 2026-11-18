@@ -9,8 +9,9 @@ description: >-
   asks whether to move them into the A-files or keep them, and checks every link, import and
   instruction that names what moves. Use when the user wants to adopt the A-files, set up or clean
   up the files agents read at session start, close out a piece of work, promote or schedule an item,
-  fix what the tracking check reports, or link abilities to the specifications of a spec-driven
-  method in the same project. Not for writing specifications and not for an issue tracker.
+  fix what the tracking check reports, link abilities to a spec-driven method's specifications
+  in the same project, or project AHEAD to GitHub issues. Not for writing specifications; not an
+  issue tracker.
 ---
 
 # Keeping the A-files
@@ -167,7 +168,7 @@ asks which (small or full, above), and proposes the check and the hook.
    behaves, so show the change and install it only after a yes that names it:
    the person's answer, or a request that already says to install the hook.
    Run `python3 tools/check_tracking.py` until it prints nothing.
-7. **Join a specification method** when the project has one (below).
+7. **Join a specification method** when the project has one (below); with a GitHub remote, offer [the projection to issues](references/issues.md), default no.
 8. **Record the adoption** as `docs/decisions/NNNN-adopt-the-a-files.md` from
    the decision template after `apply` and before the final `verify`: what
    moved, what was kept, what was left out. Keep the old names as written:
@@ -188,6 +189,7 @@ In the same commit as the last change of the work:
 - `AHEAD.md`: an item that ended moves to History.
 - `ATLAS.md`, when a part was added, moved or removed.
 - A decision record for any standing rule the work produced.
+- With the projection to issues ([scripts/project_issues.py](scripts/project_issues.py)), align with them first ([references/issues.md](references/issues.md)).
 
 ## Promote an item
 
@@ -201,16 +203,15 @@ AHEAD, and it never holds up unrelated work, which can then start.
 
 ## Upgrade the installed check
 
-A project keeps the check it was given at adoption. To bring it to this
-skill's release, run, from the project root and this skill's base directory,
-`python3 "<skill-folder>/scripts/install_check.py" --root . --upgrade`.
+A project keeps the check it was given at adoption. To bring it to this skill's release, run, from the project
+root and this skill's base directory, `python3 "<skill-folder>/scripts/install_check.py" --root . --upgrade`.
 It replaces `tools/check_tracking.py` only when the earlier check is committed
 and unchanged since, so the earlier one stays in the project's history, and it
 names both releases. It refuses, and changes nothing, when the check is not
 committed as it stands, was changed by hand at this release, or comes from a
 later release than the skill's. Hooks are left alone unless `--hook` is given.
-Then run `python3 tools/check_tracking.py`: a newer check can report what the
-earlier one did not. Fix what it reports, and commit the check with those fixes.
+Then run `python3 tools/check_tracking.py`: a newer check can report what the earlier one did not. Fix what it
+reports, and commit the check with those fixes. Then offer the projection to issues once, as at adoption.
 
 ## Agent hooks
 

@@ -13,8 +13,10 @@ before each commit keeps that picture in shape.
 They serve one owner directing agents, not a team tracker: one person decides
 the work, and the agents read and keep the same picture across sessions. A
 team that needs assignments and reviews keeps an issue tracker beside them.
+A project on GitHub may also project AHEAD's actionable items to issues, so
+the tools that read issues see them; AHEAD stays the source of truth.
 
-**Version 2.0.1.**
+**Version 2.1.0.**
 
 ## The five files
 
@@ -79,7 +81,7 @@ Then approve each hook once in Codex's `/hooks`.
 Kiro CLI and OpenCode run the plugin from a full copy, kept in one place:
 
 ```sh
-git clone --branch v2.0.1 https://github.com/ChristianOrrala/a-files.git ~/.local/share/agent-plugins/a-files
+git clone --branch v2.1.0 https://github.com/ChristianOrrala/a-files.git ~/.local/share/agent-plugins/a-files
 ```
 
 - **Kiro CLI:** link the copy's `skills/a-files` folder as
@@ -140,6 +142,7 @@ Ask your agent in plain words:
 | Starting | *Adopt the A-files in this repository.* |
 | Finishing a piece of work | *Close out this work in the A-files.* |
 | The check reports a problem | *Fix what the tracking check reports.* |
+| An issue is labelled out of step | *Align the A-files with the issues.* |
 
 When the repository already tracks work in other files (a board, a feature
 list, a roadmap, notes), adoption maps them first. It asks whether to move
@@ -150,13 +153,31 @@ installs the git hook.
 The skill also links abilities to specifications when the project uses a
 spec-driven method.
 
+## GitHub issues (opt-in)
+
+With a GitHub remote, adoption and the check's upgrade ask once, default no,
+whether to project AHEAD's approved, next and started items (open ones too, if
+you choose) to the repository's issues. On a yes, `install_check.py --issues`
+copies `tools/project_issues.py` and `.github/workflows/a-files-issues.yml`.
+After each push that changes `AHEAD.md` or `ABILITIES.md`, and when one of its
+issues is closed or reopened on GitHub, the workflow keeps
+one issue per item: its title, its `kind:` and `state:` labels and a marked
+part of its body; the rest of the issue is yours. Issues close as not planned
+when an item is dropped and as completed when its ability is done. Nothing is
+written to the A-files, nothing is deleted, and nothing leaves your machine
+before you push. A change made on GitHub (a pull request that closes an issue,
+a board rule) is never overwritten: the issue is labelled
+`a-files: out of step`, and an agent gathers the facts and asks you which side
+wins. `python3 tools/project_issues.py` alone shows the plan and writes
+nothing.
+
 ## Agent hooks
 
 The plugin carries two agent hooks, run by `skills/a-files/scripts/afiles_hook.py`.
 At session start the agent gets a note to say where things stand in four short
 lines before its first edit. At the end of a turn it gets what the check
-reports, each finding once per session, as a note for the agent: no question,
-no block. Both act only where `ACTIVE.md` carries the hot-zone marker and stay
+reports, each finding once per session, as a note for the agent: it asks the
+owner nothing, and continues the turn once, only to deliver the note. Both act only where `ACTIVE.md` carries the hot-zone marker and stay
 silent elsewhere. The git hook stays; it is the check that holds for everyone.
 
 | Tool | Turn them on |
@@ -174,7 +195,9 @@ silent elsewhere. The git hook stays; it is the check that holds for everyone.
 | `skills/a-files/references/method.md` | The method guide: the five files, hot zones, keeping in step, the check, adoption, naming, limits |
 | `skills/a-files/templates/` | A template for each file |
 | `skills/a-files/scripts/check_tracking.py` | The check (standard library only) |
-| `skills/a-files/scripts/install_check.py` | Installs the check and, with `--hook`, the agreed shell hook without replacing an existing hook; with `--upgrade`, brings an earlier check to this release |
+| `skills/a-files/scripts/install_check.py` | Installs the check and, with `--hook`, the agreed shell hook without replacing an existing hook; with `--upgrade`, brings an earlier check to this release; with `--issues`, installs the projection to issues |
+| `skills/a-files/scripts/project_issues.py` | The opt-in projection of AHEAD to GitHub issues; a dry run unless `--apply` |
+| `skills/a-files/templates/github/a-files-issues.yml` | The workflow that runs it after a push |
 | `skills/a-files/scripts/afiles_hook.py` | The agent hooks: the session-start note and the findings at the end of a turn |
 | `hooks/` | The hook files for Claude Code and Codex, Kiro CLI and OpenCode |
 | `skills/a-files/scripts/pre-commit` | The git hook that runs the check before every commit |

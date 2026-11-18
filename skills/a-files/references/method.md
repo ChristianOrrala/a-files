@@ -2,7 +2,7 @@
 
 *Five files every coding agent reads first.*
 
-Version 2.0.1, 2026-11-17
+Version 2.1.0, 2026-11-17
 
 A way for a repository to keep its rules, its current work, its abilities, its
 future and its map in five Markdown files at the root, so that any coding
@@ -255,9 +255,9 @@ when it could not run (`--staged` without git or outside a repository).
 message`): in staged mode an A-file with unstaged changes, or one whose
 changes git could not compare; a comparison with the last commit that was
 skipped because git, the repository or the first commit is missing. The
-A-files keep notes off standard output on purpose: a specification method
-paired with them runs the check with `--strict`, and again without it when
-it exits 2, and reads its exit code and its `path:line: ERROR CODE: message`
+A-files keep notes off standard output on purpose: the plugin's end-of-turn
+hook, and any tool paired with them, run the check with `--strict`, and again
+without it when it exits 2, and read its exit code and its `path:line: ERROR CODE: message`
 lines (pairing P10), so the problem lines are the only lines there. The
 option, the exit codes, the codes and the line format change only with the
 pairing contract.
@@ -522,9 +522,22 @@ says what it is to someone who has not met it.
 ## 13. Questions
 
 **Why not an issue tracker?** The A-files serve one owner directing agents,
-not a team tracker. Use a tracker when a team or a public remote exists; then
-`AHEAD.md` items can link their issues. The A-files work offline, travel with
-the code, and are read by every agent without credentials.
+not a team tracker. They work offline, travel with the code, and are read by
+every agent without credentials. Use a tracker when a team or a public remote
+exists; then `AHEAD.md` items can link their issues (an `Issue` column or an
+`- **Issue:**` line), or be projected to them.
+
+**What does projecting to issues add?** Many tools read issues and not
+`AHEAD.md`. A project with a GitHub remote may opt in: a workflow run on the
+host after each push projects the approved, next and started items (and, by a
+setting, the open ones) to issues of the same repository. It is one way:
+nothing it does writes an A-file, the agent hooks and the check stay offline,
+and nothing leaves the machine before the owner pushes. Each projected fact
+keeps one home: the issue shows it, `AHEAD.md` and `ABILITIES.md` decide it. An
+issue closed or reopened on the host against the A-files (a pull request that
+closes it, a board rule) is labelled out of step, never overwritten; an agent
+gathers the facts and the owner decides which side wins. Another host needs
+another template, not another rule.
 
 **Why Markdown and not JSON?** People review Markdown. JSON resists careless
 rewriting better; the check gives Markdown the same protection by reporting

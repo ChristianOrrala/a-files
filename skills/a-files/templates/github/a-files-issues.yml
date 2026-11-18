@@ -1,0 +1,37 @@
+# Projects AHEAD.md's actionable items to this repository's issues (the A-files, opt-in).
+# AHEAD.md stays the source of truth: this workflow never writes a file, never deletes an issue,
+# and never overwrites a change made on GitHub; it labels it "a-files: out of step" instead.
+# Written from the a-files skill's template; tools/project_issues.py and tools/check_tracking.py
+# are the copies the skill installed.
+name: A-files issues
+
+on:
+  push:
+    branches: [main]            # the default branch; change it if yours has another name
+    paths: [AHEAD.md, ABILITIES.md]
+  issues:
+    types: [closed, reopened]   # an issue closed or reopened on GitHub is labelled at once
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: a-files-issues
+  cancel-in-progress: false
+
+jobs:
+  project:
+    # On an issue event, only issues the projection keeps; the run's own closes and reopens plan nothing.
+    if: github.event_name != 'issues' || contains(github.event.issue.labels.*.name, 'a-files')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2        # the check compares identifiers with the commit before
+      - name: Project AHEAD to issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Add --include-open to project the open ideas, research and spikes too.
+        run: python3 tools/project_issues.py --root . --repo "${{ github.repository }}" --apply

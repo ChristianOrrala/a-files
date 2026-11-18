@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """Install the check from this skill in place; --hook applies the agreed shell hook.
 
-    python3 "<skill-folder>/scripts/install_check.py" --root . [--hook] [--upgrade]
+    python3 "<skill-folder>/scripts/install_check.py" --root . [--hook] [--upgrade] [--issues]
 
 An existing check is never overwritten, except with --upgrade: it then replaces
 an earlier check that is committed and unchanged since, so the earlier one stays
 in the project's history. Existing shell hooks gain the reporting
 line before their commands, unless a command of theirs already runs the check;
 other hook formats need their own integration.
+
+--issues, after the person's yes to projecting AHEAD to GitHub issues: copies the
+projection script to tools/project_issues.py and the workflow template to
+.github/workflows/a-files-issues.yml, each only when absent; with --upgrade, an earlier
+tools/project_issues.py that is committed and unchanged since is replaced. It prints the line the
+agent adds to the keep-in-step rule of AGENTS.md; it never edits AGENTS.md.
 """
 import argparse
 import codecs
@@ -203,15 +209,53 @@ def install(root, with_hook, upgrade=False):
                   "a later yes is a re-run with --hook, leaving the existing check untouched.")
 
 
+ISSUES_LINE = ("- GitHub issues may close or reopen before the A-files do: when an issue is labelled "
+               "`a-files: out of step`, or at close-out, align with the issues (the a-files skill) and ask the "
+               "owner which side wins.")
+
+
+def install_issues(root, upgrade=False):
+    """Copy the projection script and the workflow template, each only when absent."""
+    root = root.resolve()
+    git(root, "rev-parse", "--git-dir")
+    pairs = ((HERE / "project_issues.py", root / "tools/project_issues.py"),
+             (HERE.parent / "templates/github/a-files-issues.yml", root / ".github/workflows/a-files-issues.yml"))
+    contents = [(source.read_bytes(), target) for source, target in pairs]
+    for content, target in contents:
+        name = target.relative_to(root).as_posix()
+        if not os.path.lexists(target):
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with target.open("xb") as handle:
+                handle.write(content)
+            print("Installed %s." % name)
+        elif target.is_file() and target.read_bytes() == content:
+            print("Left %s untouched; it matches the plugin." % name)
+        elif upgrade and name == "tools/project_issues.py" and target.is_file() and not target.is_symlink():
+            tracked = subprocess.run(["git", "-C", str(root), "ls-files", "--error-unmatch", "--", name],
+                                     capture_output=True, text=True, encoding="utf-8", errors="surrogateescape")
+            if tracked.returncode or git(root, "status", "--porcelain", "--", name):
+                raise ValueError("the existing %s is not committed as it stands; commit it first" % name)
+            target.write_bytes(content)
+            print("Upgraded %s; the earlier copy is in the project's history." % name)
+        else:
+            print("Left %s untouched; it differs from the plugin." % name)
+    print("Add to the keep-in-step rule of AGENTS.md, once: " + ISSUES_LINE)
+    print("Nothing reaches GitHub until the person pushes; the workflow runs on the push.")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=".")
     parser.add_argument("--hook", action="store_true", help="apply the explicitly agreed shell hook integration")
     parser.add_argument("--upgrade", action="store_true",
                         help="replace an earlier check that is committed and unchanged since")
+    parser.add_argument("--issues", action="store_true",
+                        help="after the person's yes: install the projection of AHEAD to GitHub issues")
     args = parser.parse_args(argv)
     try:
         install(Path(args.root), args.hook, args.upgrade)
+        if args.issues:
+            install_issues(Path(args.root), args.upgrade)
     except (OSError, ValueError) as error:
         print("Install failed: %s. Nothing installed; no existing hook replaced. "
               "Do not commit a partial adoption; inspect git status before retrying." % error, file=sys.stderr)

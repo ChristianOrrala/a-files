@@ -2,6 +2,14 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 2.1.0 (2026-11-17)
+
+AHEAD can be projected to GitHub issues, opt-in, so the tools that read issues see the work.
+
+- **AHEAD projected to GitHub issues, opt-in.** For a project with a GitHub remote, adoption and the check's upgrade ask once, default no. `install_check.py --issues` installs `tools/project_issues.py` and a workflow that, after each push and when one of its issues is closed or reopened on GitHub, keeps one issue per approved, next or started item (open ones by a setting): title, `kind:` and `state:` labels and a marked part of the body. Issues close as not planned on a drop and as completed when the item's ability is done. The script never writes an A-file, never deletes an issue, and never overwrites a change made on GitHub: it labels the issue `a-files: out of step` and comments once; the skill's *align with the issues* gathers the facts and asks the owner which side wins (`references/issues.md`).
+- **The check's data.** `--format json` gives each AHEAD entry's What and Why. A Write-up that links a web page is no longer reported as a broken link. The problem lines and exit codes are unchanged.
+- **Taking GitHub's version** waits for the A-files: `--accept-github` refuses while AHEAD or ABILITIES still say otherwise, so the next run cannot undo the owner's answer.
+
 ## 2.0.1 (2026-11-17)
 
 A text release: the install and upgrade steps are complete enough to follow without help. No script behaves differently; only the version lines change.
