@@ -2,6 +2,21 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 2.2.0 (2026-11-19)
+
+The desk, the plan and the guide: `ACTIVE.md` can hold the larger work a task belongs to, `AHEAD.md` holds what the owner chose, and `AGENTS.md` is read whole.
+
+- **A work section in `ACTIVE.md`.** When the current work is one part of something larger the owner committed to, the hot zone may hold one free-form section named for that work: what was committed and how he will know it is done, what is unfinished, what can happen next and what waits, where the proof is. Committed work that waits stays on the desk: the agent takes another part of the same work, or says so and stops; nothing else starts until the owner says so.
+- **AHEAD is entered on the owner's decision.** An agent proposes an item and does not write the row. A new entry carries `**Entered:**` with the date and his words. What a session finds and will not do now is written down with its evidence where the work keeps its record, never in AHEAD; `ACTIVE.md`'s Pending carries one line per piece of work with findings waiting, and the owner rules on them when the work closes.
+- **The result asked for stays binding.** Work with a defect or a required check open in what was asked is reported as unfinished, never as done with follow-ups. Only the owner accepts less.
+- **Two procedures the owner starts.** *Sort a full AHEAD* proposes for each open item to keep, join, do now or remove, and applies his ruling in one commit; a removed item leaves the line `Removed on the owner's word:` in History and its number stays used. *Review AGENTS.md* goes through the file passage by passage with three questions and changes nothing before he rules. The release changes no repository itself.
+- **`AGENTS.md` has no hot zone.** The tools load the file whole, so a new `AGENTS.md` has no `<!-- hot zone ends -->` line, no `Below:` line and no line limit. An adopted repository keeps its marker until its owner has the file reviewed; the check reads both forms. The method guide documents where each tool cuts the file, as read on 2026-11-19.
+- **What a newer check can now report.** `ITEM_WITHOUT_DECISION`: an AHEAD item that is new since the last commit and has no `**Entered:**` line with a date. `UNKNOWN_ITEM` and `UNKNOWN_ABILITY` also on `ACTIVE.md`, for an identifier in its hot zone that the registers do not have. The check reads the removal line: a removed identifier is not reported as missing and is never reused. It still never refuses a commit.
+- **What it no longer reports.** `AGENTS_TOO_LONG` is retired, and `AGENTS.md` gets no marker, zone, length or pointer finding. `--format json` gains `removed_items`.
+- **The projection to GitHub issues** closes the issue of an item removed on the owner's word as not planned.
+
+**What an upgrade asks of you:** update the plugin and bring each project's check to this release with `install_check.py --upgrade`; a project that projects AHEAD to GitHub issues runs `install_check.py --upgrade --issues`, so the projection is replaced too and learns the removal line. The check reads your files as they are. The sentences an earlier release wrote into them stay until you change them: the "How to maintain this file" of your `ACTIVE.md` and `AHEAD.md`, and the rules of your `AGENTS.md`, may still say that what can wait goes to AHEAD. The new wording is in the skill's templates; ask the agent to bring it over. If your `AHEAD.md` is full of items you never chose, ask for *Sort a full AHEAD*; to drop the marker from an `AGENTS.md`, ask for *Review AGENTS.md*.
+
 ## 2.1.0 (2026-11-17)
 
 AHEAD can be projected to GitHub issues, opt-in, so the tools that read issues see the work.

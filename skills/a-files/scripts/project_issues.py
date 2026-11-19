@@ -7,14 +7,16 @@ script), lists the issues that carry its marker with `gh`, and plans one thing p
 reopen, flag as out of step, or nothing.
 
 What is projected: items in `approved`, `next` or `started`; with --include-open, `open` items too. A `dropped` item
-is considered only to close an issue that exists; no issue is ever created for it.
+is considered only to close an issue that exists; no issue is ever created for it. The same holds for an item AHEAD.md
+says was removed on the owner's word (its removal line): its issue, when it has one, is closed as not planned and
+keeps the title and the What and Why it had. An identifier that is simply gone, with no such line, is left alone.
 
 An issue is identified by a hidden marker in its body, `<!-- a-files:AH-NNN -->`, never by its title. The script owns
 the title, the labels `a-files`, `kind: <kind>` and `state: <state>`, and the part of the body between that marker and
 `<!-- a-files:end -->`; text outside it, comments, assignees and other labels belong to people and tools. Inside its
 part the script keeps one hidden line, `<!-- a-files:last: open|closed -->`: the state it last set.
 
-Open or closed, as the A-files say: closed as not planned when the item is `dropped`, closed as completed when the
+Open or closed, as the A-files say: closed as not planned when the item is `dropped` or removed, closed as completed when the
 item's ability (the first AB-NNN of its Ability column) is `done`, open otherwise (a `started` item stays open).
 A change made on GitHub is never overwritten: when an issue's state differs from what the A-files say and is not the
 state the script last set, the issue is labelled `a-files: out of step` and commented once, and its state is left
@@ -86,6 +88,10 @@ BLOB = re.compile(r"/blob/[^/\s)#]+/")
 NOTE = ("AHEAD.md is the source of truth. When work starts from this issue, the main session moves %s from AHEAD to "
         "ACTIVE as the A-files say; this issue is updated from AHEAD.md.")
 NO_VALUE = ("", "-", "\u2014", "none")
+# The state the projection gives an item AHEAD.md no longer holds and names in its removal line.
+REMOVED = "removed"
+# A line of the part of a body the script owns: What or Why, up to the next blank line.
+OWNED_FIELD = r"(?:^|\n)%s: (.*?)(?:\n\n|\Z)"
 READ_REASONS = {
     "absent": "AHEAD.md does not exist",
     "unreadable": "AHEAD.md cannot be read",
@@ -179,10 +185,30 @@ def facts(item, abilities):
     }
 
 
+def removed_fact(identifier, issue):
+    """What the projection needs of an item that left AHEAD.md on the owner's word, taken from the issue it has: its
+    title, its kind and its What and Why stay as they were; it names no ability, no write-up and no line."""
+    body = (issue.get("body") or "").replace("\r\n", "\n")
+    start, end = owned_span(body, identifier)
+    owned = body[start:end]
+
+    def kept(label):
+        found = re.search(OWNED_FIELD % label, owned, re.S)
+        return found.group(1) if found and found.group(1) != "\u2014" else None
+
+    title = issue.get("title") or ""
+    kinds = [name[len(KIND_PREFIX):] for name in label_names(issue) if name.startswith(KIND_PREFIX)]
+    return {"id": identifier, "title": title[len(identifier):].strip() if title.startswith(identifier) else title,
+            "kind": kinds[0] if kinds else "", "state": REMOVED, "ability": None, "ability_name": None,
+            "ability_status": None, "line": None, "what": kept("What"), "why": kept("Why"), "write_up": ""}
+
+
 def desired(f):
     """(open or closed, the reason it closes for, what the A-files say) for an item."""
     if f["state"] == "dropped":
         return "closed", "not planned", "AHEAD says dropped"
+    if f["state"] == REMOVED:
+        return "closed", "not planned", "AHEAD says removed on the owner's word"
     if f["ability_status"] == "done":
         return "closed", "completed", "AHEAD says %s, ABILITIES says %s is done" % (f["state"], f["ability"])
     return "open", None, "AHEAD says %s" % f["state"]
@@ -388,7 +414,7 @@ def plan(facts_list, by_id, ctx, include_open, decisions):
         if issue is None:
             if f["state"] not in selected or desired(f)[0] == "closed":
                 continue                        # never an issue for a dropped item, nor a closed one for finished work
-        elif f["state"] not in selected and f["state"] != "dropped" and not decisions:
+        elif f["state"] not in selected and f["state"] not in ("dropped", REMOVED) and not decisions:
             continue
         action, mismatch = plan_item(f, issue, ctx, decisions.get(f["id"]))
         if mismatch:
@@ -499,7 +525,8 @@ def run(args):
         return 0
     abilities = {a["id"]: a for a in data.get("abilities") or []}
     facts_list = [facts(i, abilities) for i in data.get("ahead_items") or [] if i.get("columns")]
-    known = {f["id"] for f in facts_list}
+    removed = [i for i in data.get("removed_items") or [] if i not in {f["id"] for f in facts_list}]
+    known = {f["id"] for f in facts_list} | set(removed)
     for identifier in args.decisions:
         if identifier not in known:
             print("%s is not in AHEAD.md" % identifier, file=sys.stderr)
@@ -517,6 +544,7 @@ def run(args):
         if identifier not in by_id:
             print("%s has no issue" % identifier, file=sys.stderr)
             return 2
+    facts_list += [removed_fact(identifier, by_id[identifier]) for identifier in removed if identifier in by_id]
     by_fact = {f["id"]: f for f in facts_list}
     for identifier, decision in args.decisions.items():
         want = desired(by_fact[identifier])[0]

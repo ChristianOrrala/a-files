@@ -16,7 +16,7 @@ team that needs assignments and reviews keeps an issue tracker beside them.
 A project on GitHub may also project AHEAD's actionable items to issues, so
 the tools that read issues see them; AHEAD stays the source of truth.
 
-**Version 2.1.0.**
+**Version 2.2.0.**
 
 ## The five files
 
@@ -25,7 +25,7 @@ the tools that read issues see them; AHEAD stays the source of truth.
 | `AGENTS.md` | The rules, the warm-up, and an index of every file an agent needs |
 | `ACTIVE.md` | The work in progress: progress, the next step, pending items, debt, blockers |
 | `ABILITIES.md` | Every ability of the product: planned, in progress, done or retired |
-| `AHEAD.md` | Everything not started: next up, milestones, ideas, research, spikes |
+| `AHEAD.md` | What the owner chose to plan: next up, milestones, ideas, research, spikes |
 | `ATLAS.md` | The architecture map: each part, its files, what it depends on, what checks it |
 
 **Small or full.** Adoption offers the small setup (`AGENTS.md` and
@@ -35,16 +35,26 @@ then on.
 
 ## How it works
 
-- **Hot zones.** The top of each file is short and capped. At every session
-  start an agent reads the hot zones of the files the repository keeps and the
-  last fifteen commits: about 400 lines at most. Before changing a file, it checks
+- **Hot zones.** `AGENTS.md` is loaded whole by the tools that read it, so it
+  holds only how to work here and where to look next. The top of each of the
+  other four is short and capped. At every session start an agent reads those
+  hot zones and the last fifteen commits: 360 lines of hot zones at most. Before changing a file, it checks
   git status and states Finished, Remaining, Blocked by and Next step in four short
   lines, writing "nothing" where a line is empty.
   It opens anything else only when the task needs it.
 - **Keep in step.** Each A-file is updated in the same commit as the work it
   describes. Start or finish work, and `ACTIVE.md` changes in that commit.
+- **A desk for long work.** Work the owner commits to for days or weeks gets a
+  section of its own in `ACTIVE.md`, in the form the work needs. If it has to
+  wait, it stays there, and nothing else starts until the owner says so.
+- **A plan the owner decides.** An agent proposes an item for `AHEAD.md` and
+  does not write it. What a session finds and will not do now is written down
+  where the work keeps its record, and the owner rules on it when the work
+  closes. Work is reported as unfinished while a defect or a required check
+  stands in what was asked.
 - **Stable identifiers.** Abilities (`AB-001`) and items ahead (`AH-001`) are
-  never deleted or reused, so history stays readable.
+  never reused, so history stays readable. An ability is never deleted; an
+  item goes only on the owner's word, and its number stays used.
 - **Status once, in the index row.** An ability's status is written in its
   row only. Done abilities can move to a table below the hot zone, so the
   session-start read stays short in a long-lived product.
@@ -81,7 +91,7 @@ Then approve each hook once in Codex's `/hooks`.
 Kiro CLI and OpenCode run the plugin from a full copy, kept in one place:
 
 ```sh
-git clone --branch v2.1.0 https://github.com/ChristianOrrala/a-files.git ~/.local/share/agent-plugins/a-files
+git clone --branch v2.2.0 https://github.com/ChristianOrrala/a-files.git ~/.local/share/agent-plugins/a-files
 ```
 
 - **Kiro CLI:** link the copy's `skills/a-files` folder as

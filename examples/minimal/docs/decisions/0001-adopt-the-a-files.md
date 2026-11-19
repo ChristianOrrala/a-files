@@ -12,7 +12,7 @@ new work while a cancellation bug was still open.
 
 The repository tracks its work in the A-files: `AGENTS.md` (rules and index),
 `ACTIVE.md` (work in progress), `ABILITIES.md` (every ability), `AHEAD.md`
-(everything not started) and `ATLAS.md` (the architecture map), as the A-files
+(what the owner chose to plan) and `ATLAS.md` (the architecture map), as the A-files
 method describes. Every session starts with the warm-up; the check runs before
 every commit.
 

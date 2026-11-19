@@ -21,7 +21,12 @@
 
 ## Surprises
 
+<What changed the plan, and the default home of what the work finds: each finding the
+work will not act on now, with its evidence, for the owner to rule on when the
+work closes. Never an item an agent adds to AHEAD.>
+
 - <what we learned that changed the plan>
+- <a finding: what, where, the evidence; inside or outside what was asked>
 
 ## How to resume
 

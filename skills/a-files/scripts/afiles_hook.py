@@ -21,7 +21,7 @@ import select
 import subprocess
 import sys
 
-A_FILES_VERSION = "2.1.0"
+A_FILES_VERSION = "2.2.0"
 MARKER = "<!-- hot zone ends -->"
 LIMIT = 3900
 MAX_FINDINGS = 5
@@ -31,12 +31,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SESSION_NOTE = (
     "Note for the agent: this project keeps the A-files. Before your first edit, say where things stand "
     "in four short lines: Finished, Remaining, Blocked by, Next step (write \"nothing\" for an empty line). "
-    "Check them against git log and git status, not only against ACTIVE.md. When the request already says "
-    "exactly what to do, one short line is enough. This asks nothing of the owner."
+    "Check them against git log and git status, not only against ACTIVE.md. Under Remaining, name the "
+    "unfinished parts of committed work and any findings that await the owner (ACTIVE's Pending says where). "
+    "When the request already says exactly what to do, one short line is enough. This asks nothing of the owner."
 )
 STOP_HEAD = (
     "Notes for the agent: the A-files are out of step. None of this needs the owner. Before you end your turn, "
-    "align them now or list them in your handoff. Change only what the current task authorizes."
+    "align them now, or say in your handoff which you left and why. Change only what the current task "
+    "authorizes. If a defect or a required check still stands in what was asked, report that work as unfinished, "
+    "never as done with follow-ups. What you found and will not do now is written down where the work keeps its "
+    "record, never as a new item in AHEAD.md: the owner decides what enters it."
 )
 FINDING = re.compile(r"^(?P<path>.+?):(?P<line>\d+): ERROR (?P<code>[A-Za-z0-9_-]+): (?P<message>.*)$")
 
