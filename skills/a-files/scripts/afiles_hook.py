@@ -21,7 +21,7 @@ import select
 import subprocess
 import sys
 
-A_FILES_VERSION = "2.2.1"
+A_FILES_VERSION = "2.2.2"
 MARKER = "<!-- hot zone ends -->"
 LIMIT = 3900
 MAX_FINDINGS = 5
@@ -112,7 +112,7 @@ def key_of(path, code, message):
 
 
 def memory_file(root, session):
-    digest = hashlib.sha1(session.encode("utf-8")).hexdigest()[:16]
+    digest = hashlib.sha1(session.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]  # a file name, not a secret
     path = git(["rev-parse", "--git-path", "afiles-hook-%s.json" % digest], root)
     if not path:
         return ""

@@ -16,7 +16,7 @@ team that needs assignments and reviews keeps an issue tracker beside them.
 A project on GitHub may also project AHEAD's actionable items to issues, so
 the tools that read issues see them; AHEAD stays the source of truth.
 
-**Version 2.2.1.**
+**Version 2.2.2.**
 
 ## The five files
 
@@ -91,7 +91,7 @@ Then approve each hook once in Codex's `/hooks`.
 Kiro CLI and OpenCode run the plugin from a full copy, kept in one place:
 
 ```sh
-git clone --branch v2.2.1 https://github.com/ChristianOrrala/a-files.git ~/.local/share/agent-plugins/a-files
+git clone --branch v2.2.2 https://github.com/ChristianOrrala/a-files.git ~/.local/share/agent-plugins/a-files
 ```
 
 - **Kiro CLI:** link the copy's `skills/a-files` folder as

@@ -2,6 +2,14 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 2.2.2 (2026-11-19)
+
+Fixes found by a static check of the skill (NVIDIA SkillEvaluator, Tier 1).
+
+- **A shorter skill file.** The adoption steps, the hook rules, the validation, the report and the worked example move from `SKILL.md` to `references/adopt.md`, read whole before the first step. The two replies of an adoption stay in `SKILL.md`. `SKILL.md` drops from about 23,300 to 14,900 characters, under the read limits of the agents that cut a long skill file.
+- **The trigger first.** The skill's description opens with "Use when", so a skill list that shows only its first words shows when to use it. The wording is the same, reordered.
+- **The hook names its memory file without a security hash.** The session's digest is marked as not for security; the file names stay the same.
+
 ## 2.2.1 (2026-11-19)
 
 Fixes found by the review of 2.2.0.
