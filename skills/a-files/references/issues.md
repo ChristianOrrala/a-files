@@ -40,6 +40,9 @@ mismatch, with a recommendation:
 | Keep the A-files | `--keep-a-files AH-NNN`: the issue returns to what the A-files say, with a comment |
 | Later | Nothing changes; the label stays |
 
+A removed item has no Take GitHub's version: the removal is the owner's word, and
+`--accept-github` refuses it. Offer Keep the A-files or Later.
+
 A closed issue alone never makes an ability `done`. When work starts from an
 issue, the main session moves the item from AHEAD to ACTIVE as the skill's
 Promote an item says; workers report to it.

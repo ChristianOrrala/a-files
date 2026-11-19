@@ -20,5 +20,5 @@ every commit.
 
 - A session starts from the same picture whatever agent runs it.
 - New work starts only when `ACTIVE.md` is empty.
-- The files cost a few minutes per session to keep in step; the check refuses
-  a commit that breaks their shape.
+- The files cost a few minutes per session to keep in step; the check reports
+  at commit time what breaks their shape and never refuses the commit.

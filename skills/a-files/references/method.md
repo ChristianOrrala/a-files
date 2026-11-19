@@ -2,7 +2,7 @@
 
 *Five files every coding agent reads first.*
 
-Version 2.2.0, 2026-11-19
+Version 2.2.1, 2026-11-19
 
 A way for a repository to keep its rules, its current work, its abilities, its
 future and its map in five Markdown files at the root, so that any coding
@@ -516,6 +516,12 @@ cut by size:
 - Antigravity truncates a single rule file over 24,000 bytes, and when the
   always-on rules together pass 20,000 tokens it replaces the largest with a
   one-line pointer.
+
+The others name no size limit as read that day: Gemini CLI, Cursor, GitHub
+Copilot (its code review dropped a 4,000-character cap on 2026-06-12) and
+OpenCode found none; for Kiro, Amp and Devin Desktop (once Windsurf) none
+was found in the current documentation, though Windsurf's older pages
+truncated a file over 6,000 characters.
 
 The check reports none of this: the limits differ by tool and change with
 their releases. A file that nears one is shortened with the three questions of

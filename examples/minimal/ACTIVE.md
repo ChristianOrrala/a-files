@@ -23,7 +23,7 @@
 
 ## Next new work
 
-Not yet: AB-003 is in progress. After it, AHEAD's Next up starts with AH-002.
+Nothing: AB-003 is in progress, so the desk is not clear.
 
 Below: How to maintain this file.
 

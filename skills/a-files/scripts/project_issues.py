@@ -364,6 +364,11 @@ def plan_item(f, issue, ctx, decision=None):
         new_last, out_now = last, True
     else:
         new_last, out_now = want, False
+    # A removed item's issue closes as not planned, even when it was already closed as completed: the removal is the
+    # owner's word, and the reason is the record of it.
+    current_reason = (issue.get("stateReason") or "").lower().replace("_", " ")
+    if f["state"] == REMOVED and actual == want == "closed" and not transition and current_reason != reason:
+        transition = "reason"
     new_body = splice(body, f["id"], owned_text(f, ctx, new_last))
     changes = []
     if issue["title"] != title:
@@ -387,13 +392,13 @@ def plan_item(f, issue, ctx, decision=None):
         return None, mismatch
     number = issue["number"]
     if decision == "keep":
-        kind, line = "keep", "%s keep-a-files #%d (%s)" % (f["id"], number, "close" if transition == "closed" else
+        kind, line = "keep", "%s keep-a-files #%d (%s)" % (f["id"], number, "close" if transition in ("closed", "reason") else
                                                            "reopen" if transition else "label removed")
     elif decision == "accept":
         kind, line = "accept", "%s accept-github #%d (%s)" % (f["id"], number, actual)
     elif transition:
-        kind = "close" if transition == "closed" else "reopen"
-        line = "%s close #%d (%s)" % (f["id"], number, reason) if transition == "closed" else "%s reopen #%d" % (f["id"], number)
+        kind = "reopen" if transition == "open" else "close"
+        line = "%s reopen #%d" % (f["id"], number) if transition == "open" else "%s close #%d (%s)" % (f["id"], number, reason)
     elif flagging:
         kind, line = "out of step", "%s out of step #%d: %s on GitHub, %s" % (f["id"], number, actual, says)
     else:
@@ -450,6 +455,10 @@ def carry_out(repo, action):
         gh(["issue", "close", number, "--repo", repo, "--reason", action["reason"]])
     elif action["transition"] == "open":
         gh(["issue", "reopen", number, "--repo", repo])
+    elif action["transition"] == "reason":
+        # gh issue close leaves an issue that is already closed as it is; the API changes its reason.
+        gh(["api", "-X", "PATCH", "repos/%s/issues/%s" % (repo, number), "-f", "state=closed",
+            "-f", "state_reason=" + action["reason"].replace(" ", "_")])
     if action["title"] or action["body"] is not None or action["add"] or action["remove"]:
         args = ["issue", "edit", number, "--repo", repo]
         if action["title"]:
@@ -547,6 +556,10 @@ def run(args):
     facts_list += [removed_fact(identifier, by_id[identifier]) for identifier in removed if identifier in by_id]
     by_fact = {f["id"]: f for f in facts_list}
     for identifier, decision in args.decisions.items():
+        if decision == "accept" and by_fact[identifier]["state"] == REMOVED:
+            print("%s was removed on the owner's word; a removal is not undone from GitHub. Keep the A-files or leave "
+                  "it for later" % identifier, file=sys.stderr)
+            return 2
         want = desired(by_fact[identifier])[0]
         if decision == "accept" and by_id[identifier]["state"].lower() != want:
             # Taking GitHub's version is the A-files' change first: accepted before it, the next run would read the

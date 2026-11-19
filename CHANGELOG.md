@@ -2,6 +2,17 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 2.2.1 (2026-11-19)
+
+Fixes found by the review of 2.2.0.
+
+- **Removed numbers stay removed.** A removal range rewritten as its two end points is reported, since it would free the numbers inside; a range written backwards (`AH-089 to AH-069`) covers every number in it.
+- **New means new.** An AHEAD number the last commit only mentioned in prose is a new item and needs its Entered line; the Entered date must be a calendar date (2026-02-31 is not).
+- **Two readers, one index.** The check reads the index of `AGENTS.md` as upspec does: a row needs no closing pipe, and when a table's header starts with File, another table naming an A-file is not the index.
+- **Fences.** A four-backtick block that holds a three-backtick example is skipped whole.
+- **Issues.** A removed item's issue already closed as completed is closed as not planned instead; `--accept-github` refuses a removed item and says why, and the alignment menu no longer offers it.
+- **Texts.** The skill's codes table explains every code the check reports (`UNREADABLE`, `NOT_INDEXED`, `INVALID_HOME`, `MISSING_HOME` and `NO_MAP` were missing); the pairing contract names `ITEM_WITHOUT_DECISION`; the method guide's limits cover every tool researched; the minimal example no longer names the next item while work is active, and its adoption record no longer says the check refuses commits.
+
 ## 2.2.0 (2026-11-19)
 
 The desk, the plan and the guide: `ACTIVE.md` can hold the larger work a task belongs to, `AHEAD.md` holds what the owner chose, and `AGENTS.md` is read whole.

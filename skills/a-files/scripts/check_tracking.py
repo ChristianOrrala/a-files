@@ -83,6 +83,7 @@ unavailable) and for --staged.
 """
 import argparse
 import codecs
+import datetime
 import enum
 import errno
 import json
@@ -93,7 +94,7 @@ import sys
 from collections import namedtuple
 
 # The version of the A-files this check ships with; a test keeps it equal to the plugin's manifests.
-A_FILES_VERSION = "2.2.0"
+A_FILES_VERSION = "2.2.1"
 # The shape of the --format json object; it rises only when a key changes its meaning or goes away.
 DATA_SCHEMA = 1
 MARKER = "<!-- hot zone ends -->"
@@ -122,7 +123,7 @@ TICKED = re.compile(r"`([^`\s]+)`")
 SPECS = re.compile(r"^\s*(?:[-*]\s*)?\*\*Specs:\*\*\s*(.*)$")
 HOME = re.compile(r"^\s*(?:[-*]\s*)?\*\*Home:\*\*\s*(?:\[[^\]]*\]\()?`?([^`)\s]+)`?\)?")
 # The line of an AHEAD entry that records the owner's decision to keep the item: the label and an ISO date.
-ENTERED = re.compile(r"^\s*(?:[-*]\s*)?\*\*Entered:\*\*\s*\d{4}-\d{2}-\d{2}\b")
+ENTERED = re.compile(r"^\s*(?:[-*]\s*)?\*\*Entered:\*\*\s*(\d{4}-\d{2}-\d{2})\b")
 # The line of AHEAD.md that names the identifiers the owner had removed; their numbers stay used.
 REMOVAL = "Removed on the owner's word:"
 RANGE = re.compile(r"\bAH-(\d{3})\s+to\s+AH-(\d{3})\b")
@@ -384,10 +385,12 @@ def unfenced(lines):
     templates a file carries for itself are examples, not entries."""
     out, fence = [], None
     for line in lines:
-        mark = re.match(r"^\s*(```|~~~)", line)
+        mark = re.match(r"^\s*(`{3,}|~{3,})(.*)$", line)
         if fence:
             out.append("")
-            if mark and mark.group(1) == fence:
+            # A fence closes only on a bare run of its own character at least as long as the one that opened it,
+            # so a four-backtick block can hold a three-backtick example.
+            if mark and mark.group(1)[0] == fence[0] and len(mark.group(1)) >= len(fence) and not mark.group(2).strip():
                 fence = None
         elif mark:
             fence = mark.group(1)
@@ -548,7 +551,8 @@ def removed_ids(lines):
         text = re.split(r"\d{4}-\d{2}-\d{2}|[\"\u201c]", text[len(REMOVAL):], maxsplit=1)[0]  # before the date and his words
         found.update(AH_ID.findall(text))
         for low, high in RANGE.findall(text):
-            found.update("AH-%03d" % number for number in range(int(low), int(high) + 1))
+            low, high = sorted((int(low), int(high)))            # a range written backwards is still a range
+            found.update("AH-%03d" % number for number in range(low, high + 1))
     return found
 
 
@@ -559,8 +563,20 @@ def check_removed(report, name, lines, pattern, use_git):
     if before is None:
         return
     now = set(pattern.findall("\n".join(lines))) | removed_ids(lines)
-    for identifier in sorted(set(pattern.findall("\n".join(unfenced(before.split("\n"))))) - now):
+    earlier = unfenced(before.split("\n"))
+    # A number a removal range covered stays covered: rewriting the range as its two ends would free the numbers inside.
+    gone_before = set(pattern.findall("\n".join(earlier))) | (removed_ids(earlier) if pattern is AH_ID else set())
+    for identifier in sorted(gone_before - now):
         report.error(name, 1, "REMOVED_ID", "%s was in the last commit and is gone; identifiers are never removed" % identifier)
+
+
+def calendar_date(text):
+    """True when the ISO date is one on the calendar (2026-02-31 is not)."""
+    try:
+        datetime.date.fromisoformat(text)
+        return True
+    except ValueError:
+        return False
 
 
 def check_entered(report, lines, items, use_git):
@@ -568,8 +584,10 @@ def check_entered(report, lines, items, use_git):
     last commit, as text or in its removal line; an AHEAD.md the last commit did not hold is new as a whole."""
     if not use_git:
         return
-    before = (last_commit_text(report.root, "AHEAD.md") or "").split("\n")
-    known = set(AH_ID.findall("\n".join(unfenced(before)))) | removed_ids(unfenced(before))
+    before = unfenced((last_commit_text(report.root, "AHEAD.md") or "").split("\n"))
+    # Known means an item of the last commit (an index row or an entry) or a number its removal line covers; a number
+    # only mentioned in prose was never entered.
+    known = set(index_rows(before, AH_ID, ("ID",))) | set(entries(before, AH_ID)) | removed_ids(before)
     heads = entries(lines, AH_ID)
     for identifier in sorted((set(items) | set(heads)) - known - removed_ids(lines)):
         if not AH_ID.fullmatch(identifier):
@@ -577,7 +595,7 @@ def check_entered(report, lines, items, use_git):
         start = heads[identifier][0][0] if identifier in heads else None
         if start is not None:
             stop = next((i for i in range(start, len(lines)) if lines[i].startswith("#")), len(lines))
-            if any(ENTERED.match(line) for line in lines[start:stop]):
+            if any(ENTERED.match(line) and calendar_date(ENTERED.match(line).group(1)) for line in lines[start:stop]):
                 continue
         report.error("AHEAD.md", start or items[identifier][0][0], "ITEM_WITHOUT_DECISION",
                      "%s is new and its entry has no **Entered:** line with a date; an item enters on the owner's "
@@ -727,13 +745,20 @@ def held_identifiers(root, name, use_git):
     return before is not None and ANY_ID.search("\n".join(unfenced(before.split("\n")))) is not None
 
 
+INDEX_HEADS = ("file", "files", "path")
+
+
 def listed(lines):
-    """The A-files the index of AGENTS.md lists. The index is a table, anywhere in the file, whose rows start with
-    an A-file's name (in backticks or as a link); a name elsewhere (the warm-up, keep in step, naming) is not a
-    listing. An AGENTS.md with no such table names its files in prose, and every A-file named in its first 100 lines
-    is listed: a passing mention further down lists nothing. The lines come without their fenced blocks."""
+    """The A-files the index of AGENTS.md lists. The index is a table, anywhere in the file, whose header starts
+    with File (or Files, Path) and whose rows start with an A-file's name (in backticks or as a link); a name
+    elsewhere (the warm-up, keep in step, naming, another table) is not a listing. A file whose tables have no such
+    header is read as before: any table whose rows start with an A-file's name. An AGENTS.md with no such table
+    names its files in prose, and every A-file named in its first 100 lines is listed: a passing mention further
+    down lists nothing. The lines come without their fenced blocks."""
     found = set()
-    for header, rows in tables(lines):
+    every = tables(lines)
+    index = [table for table in every if table[0] and table[0][0].strip("`* ").lower() in INDEX_HEADS] or every
+    for header, rows in index:
         for _, row in rows:
             cell = re.sub(r"\]\([^)]*\)", "", row.get(header[0], "")).strip("[]` ")
             found.add(cell[2:] if cell.startswith("./") else cell)

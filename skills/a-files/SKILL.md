@@ -248,11 +248,15 @@ changes the exit code.
 | Code | Fix |
 |---|---|
 | `MISSING`, `NO_CONTRACT`, `NO_HOT_ZONE_END` | Create the file from its template, or restore one that held identifiers; add the contract line or the marker (`AGENTS.md` needs neither) |
+| `UNREADABLE` | Save the file as UTF-8 text, or fix what stops it being read |
+| `NOT_INDEXED` | Name the A-file in `AGENTS.md`'s index table |
+| `INVALID_HOME`, `MISSING_HOME` | Name as the home the tracking file that was kept, and check that it exists |
 | `HOT_ZONE_TOO_LONG` | Move detail below the hot zone and point to it; in `ACTIVE.md`, shorten the work section by its four rules |
 | `UNPOINTED_SECTION` | Name the section in the hot zone's `Below:` line |
 | `BROKEN_LINK`, `MISSING_PATH`, `BROKEN_SPEC` | Point the link or path at what exists, or remove it |
 | `BLOCKER_WITHOUT_SOURCE` | Name what the blocker stops and its dated owner message, specification ID or path, or failing check by name; check that the source still holds |
 | `MISSING_FIELD` | Add the field to ACTIVE's Now, with "none" when it is empty |
+| `NO_MAP` | Add the map table to ATLAS's hot zone (Part, What it does, Works through, ...) |
 | `BAD_ID`, `BAD_STATUS`, `BAD_KIND`, `DUPLICATE_ID`, `NO_ENTRY`, `NOT_IN_INDEX`, `NO_INDEX` | Make the index rows and the entries agree, with values from the lists; each identifier keeps one row |
 | `STATUS_MISMATCH` | The row holds the status: drop the old entry's Status line, or set it to the row's |
 | `REMOVED_ID` | Restore the identifier; retire or drop the item instead of deleting it. An item the owner had removed is named in History's line `Removed on the owner's word:` |
