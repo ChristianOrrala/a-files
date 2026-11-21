@@ -94,7 +94,7 @@ import sys
 from collections import namedtuple
 
 # The version of the A-files this check ships with; a test keeps it equal to the plugin's manifests.
-A_FILES_VERSION = "2.2.2"
+A_FILES_VERSION = "2.3.0"
 # The shape of the --format json object; it rises only when a key changes its meaning or goes away.
 DATA_SCHEMA = 1
 MARKER = "<!-- hot zone ends -->"
@@ -111,9 +111,14 @@ OPTIONAL = ("ABILITIES.md", "AHEAD.md", "ATLAS.md")
 GUIDELINE_FILES = ("AGENTS.md", "CLAUDE.md")
 ACTIVE_FIELDS = ("Current work", "Progress", "Next step", "Blocked by", "Waiting on owner", "Restart", "Plan", "Updated")
 AB_STATUSES = ("planned", "in progress", "done", "retired")
-AH_KINDS = ("idea", "research", "spike", "proposal")
-AH_STATES = ("open", "approved", "next", "started", "dropped")
+AH_KINDS = ("idea", "research", "spike", "proposal", "fix")
+AH_STATES = ("open", "approved", "next", "started", "done", "dropped")
 NEEDS_ABILITY = ("approved", "next", "started")
+# A fix repairs an ability, which may be done; it may also stand alone.
+FIX = "fix"
+# Rows of live items sit in AHEAD's index; done and dropped rows in History.
+LIVE_STATES = ("open", "approved", "next", "started")
+CLOSED_STATES = ("done", "dropped")
 AB_ID = re.compile(r"\bAB-\d{3}\b")
 AH_ID = re.compile(r"\bAH-\d{3}\b")
 ANY_ID = re.compile(r"\b(?:AB|AH)-\d{3}\b")
@@ -124,6 +129,10 @@ SPECS = re.compile(r"^\s*(?:[-*]\s*)?\*\*Specs:\*\*\s*(.*)$")
 HOME = re.compile(r"^\s*(?:[-*]\s*)?\*\*Home:\*\*\s*(?:\[[^\]]*\]\()?`?([^`)\s]+)`?\)?")
 # The line of an AHEAD entry that records the owner's decision to keep the item: the label and an ISO date.
 ENTERED = re.compile(r"^\s*(?:[-*]\s*)?\*\*Entered:\*\*\s*(\d{4}-\d{2}-\d{2})\b")
+# The value of an entry's Done line: a calendar date first, then the proof (how it was checked, the work's commits).
+DONE_VALUE = re.compile(r"^(\d{4}-\d{2}-\d{2})\b[\s,;:.\-]*(.*)$", re.S)
+# A commit named in a Done line: 7 to 40 hexadecimal characters with at least one digit, so a word is not one.
+COMMIT = re.compile(r"\b(?=[0-9a-f]*\d)[0-9a-f]{7,40}\b")
 # The line of AHEAD.md that names the identifiers the owner had removed; their numbers stay used.
 REMOVAL = "Removed on the owner's word:"
 RANGE = re.compile(r"\bAH-(\d{3})\s+to\s+AH-(\d{3})\b")
@@ -602,6 +611,116 @@ def check_entered(report, lines, items, use_git):
                      "decision" % identifier)
 
 
+def entry_fields(lines, pattern, identifier):
+    """The field lines of one entry (`### <id> ...` to the next heading), as fields() gives them, or {}."""
+    heads = entries(lines, pattern)
+    if identifier not in heads:
+        return {}
+    start = heads[identifier][0][0]
+    stop = next((i for i in range(start, len(lines)) if lines[i].startswith("#")), len(lines))
+    return fields(lines, start, stop)
+
+
+def default_tip(root):
+    """The commit at the tip of the default branch (origin's HEAD, else main, else master), or None when there is
+    none or the clone is shallow, whose history is cut short."""
+    shallow = git(root, "rev-parse", "--is-shallow-repository")
+    if shallow is None or shallow.returncode != 0 or shallow.stdout.strip() == b"true":
+        return None
+    origin = git(root, "symbolic-ref", "-q", "refs/remotes/origin/HEAD")
+    refs = [origin.stdout.decode().strip()] if origin is not None and origin.returncode == 0 and origin.stdout.strip() else []
+    for ref in refs + ["refs/heads/main", "refs/heads/master"]:
+        done = git(root, "rev-parse", "--verify", "-q", ref + "^{commit}")
+        if done is not None and done.returncode == 0:
+            return done.stdout.decode().strip()
+    return None
+
+
+def merged(root, commit):
+    """True when the commit is in HEAD's history; an unknown commit is not."""
+    done = git(root, "merge-base", "--is-ancestor", commit, "HEAD")
+    return done is not None and done.returncode == 0
+
+
+def check_done(report, lines, end, items, next_up, registry, use_git):
+    """A done item's Done line, where rows sit, the merge test on a named commit, and the abilities in
+    step with their items. registry: (the ABILITIES index rows, ABILITIES.md's lines), or None when it is not read.
+    Each report clears with one edit."""
+    under, current = [], None
+    for line in lines:
+        heading = re.match(r"^##\s+(.*?)\s*$", line)
+        current = heading.group(1) if heading else current
+        under.append(current)
+    on_tip = None
+    if use_git:
+        tip = default_tip(report.root)
+        head = git(report.root, "rev-parse", "--verify", "-q", "HEAD^{commit}")
+        on_tip = bool(tip) and head is not None and head.returncode == 0 and head.stdout.decode().strip() == tip
+    state_of, kind_of, abilities_of, done_of = {}, {}, {}, {}
+    for identifier, found in items.items():
+        if not AH_ID.fullmatch(identifier):
+            continue
+        line, row = found[0]
+        state = state_of[identifier] = row.get("State", "").strip("` ")
+        kind_of[identifier] = row.get("Kind", "").strip("` ")
+        abilities_of[identifier] = AB_ID.findall(row.get("Ability", ""))
+        section = (under[line - 1] or "").lower()
+        if state == "started" and section.startswith("history"):
+            report.error("AHEAD.md", line, "ROW_OUT_OF_PLACE", "%s is started and its row is in History; a row moves "
+                         "to History when its item is done or dropped (the finished-items sort moves them)" % identifier)
+        elif state in CLOSED_STATES and line <= end:
+            report.error("AHEAD.md", line, "ROW_OUT_OF_PLACE", "%s is %s and its row is in the index; move it to "
+                         "History" % (identifier, state))
+        field = entry_fields(lines, AH_ID, identifier).get("Done")
+        parsed = DONE_VALUE.match(field["value"].strip()) if field else None
+        if parsed and calendar_date(parsed.group(1)):
+            proof = parsed.group(2).strip()
+            commits = COMMIT.findall(proof)
+            verified = None
+            if on_tip and commits:
+                missing = [c for c in commits if not merged(report.root, c)]
+                verified = not missing
+                if missing:
+                    report.error("AHEAD.md", field["line"], "DONE_NOT_MERGED", "%s's Done line names %s, which is not "
+                                 "in the history of the default branch; name the commit that reached it, or name the "
+                                 "work in words" % (identifier, ", ".join(missing)))
+            done_of[identifier] = {"date": parsed.group(1), "proof": proof, "line": field["line"],
+                                   "commits": commits, "verified": verified}
+        if state == "done" and identifier not in done_of:
+            report.error("AHEAD.md", field["line"] if field else line, "DONE_WITHOUT_PROOF", "%s is done and its entry "
+                         "has no **Done:** line that starts with a calendar date (YYYY-MM-DD), then the proof" % identifier)
+    for number, text in enumerate(lines[:end], 1):
+        if "## Next up" in "\n".join(lines[:number]) and text in next_up:
+            for identifier in AH_ID.findall(text):
+                if state_of.get(identifier) in CLOSED_STATES:
+                    report.error("AHEAD.md", number, "ROW_OUT_OF_PLACE", "Next up names %s, which is %s; take it "
+                                 "out of Next up" % (identifier, state_of[identifier]))
+    for item in report.parsed["ahead_items"]:
+        item["done"] = done_of.get(item["id"])
+    if registry is None:
+        return
+    rows, ab_lines = registry
+    status = {a: found[0][1].get("Status", "").strip("` ") for a, found in rows.items()}
+    for identifier, state in sorted(state_of.items()):
+        named = abilities_of[identifier]
+        if state == "started" and kind_of[identifier] != FIX and named and all(status.get(a) == "done" for a in named):
+            report.error("AHEAD.md", items[identifier][0][0], "ABILITY_DONE_ITEM_OPEN", "%s is started and every "
+                         "ability it names is done (%s); mark it done with its Done line (a proof in words counts), "
+                         "drop it, or return an ability to in progress" % (identifier, ", ".join(named)))
+    for ability, found in sorted(rows.items()):
+        if status.get(ability) != "in progress":
+            continue
+        naming = [i for i in sorted(state_of) if ability in abilities_of[i] and kind_of[i] != FIX]
+        if not naming or any(state_of[i] not in CLOSED_STATES for i in naming):
+            continue
+        following = entry_fields(ab_lines, AB_ID, ability).get("Next")
+        if following and any(state_of.get(i) in LIVE_STATES for i in AH_ID.findall(following["value"])):
+            continue
+        report.error("ABILITIES.md", found[0][0], "ITEMS_DONE_ABILITY_OPEN", "%s is in progress and every item that "
+                     "names it is done or dropped (%s); mark it done or retired, or name the item that continues it "
+                     "in its **Next:**" % (ability, ", ".join(naming)))
+
+
 def check_active_ids(report, lines, end, abilities, items):
     """Every AB- or AH- identifier ACTIVE's hot zone names exists in its register; each is reported once. A register
     that was not read (absent, kept elsewhere, unreadable) is not asked. abilities, items: the identifiers known, or
@@ -873,7 +992,7 @@ def check(root, use_git, tree=None):
                 if kind not in AH_KINDS:
                     report.error("AHEAD.md", line, "BAD_KIND", "%s: kind %r is not one of %s" % (identifier, kind, ", ".join(AH_KINDS)))
                 item_abilities = AB_ID.findall(row.get("Ability", ""))
-                if row.get("State", "").strip("` ") in NEEDS_ABILITY and not item_abilities:
+                if row.get("State", "").strip("` ") in NEEDS_ABILITY and not item_abilities and kind != FIX:
                     report.error("AHEAD.md", line, "NO_ABILITY", "%s is %s and names no ability (AB-0xx)" % (identifier, row.get("State", "").strip()))
                 for ability in item_abilities:
                     if abilities_kept or "ABILITIES.md" in reported:
@@ -894,6 +1013,9 @@ def check(root, use_git, tree=None):
             for identifier in AH_ID.findall(next_up):
                 if identifier not in items:
                     report.error("AHEAD.md", 1, "UNKNOWN_ITEM", "Next up names %s, which has no index row" % identifier)
+            check_done(report, lines, end, items, next_up,
+                       None if abilities_kept or "ABILITIES.md" not in files else (abilities, files["ABILITIES.md"]),
+                       use_git)
 
     if active_zone:
         ahead = files.get("AHEAD.md") or []

@@ -2,7 +2,7 @@
 
 *Five files every coding agent reads first.*
 
-Version 2.2.2, 2026-11-19
+Version 2.3.0, 2026-11-20
 
 A way for a repository to keep its rules, its current work, its abilities, its
 future and its map in five Markdown files at the root, so that any coding
@@ -59,7 +59,7 @@ assignments, reviews and parallel boards uses an issue tracker beside them
 | `AGENTS.md` | How to work in this repository and where to look next: what it is, the warm-up, the index of every file an agent needs, the keep-in-step rule, the commands and the local rules | State, plans, history: anything another file owns |
 | `ACTIVE.md` | What is being done now: the piece being worked, the larger work it belongs to when the owner committed to one, pending, blocked and deferred items, debt | Ideas, future abilities |
 | `ABILITIES.md` | Every ability of the product, planned, in progress, done or retired; one entry each, never deleted | The agent's own abilities; ideas not approved |
-| `AHEAD.md` | What the owner chose to plan: the next-up queue, milestones, ideas, research, spikes and proposals, each pointing to its full write-up. Nothing enters without his decision | Work in progress; what a session found and nobody chose |
+| `AHEAD.md` | What the owner chose to plan, and what is under way from it: the next-up queue, milestones, ideas, research, spikes, proposals and planned fixes, each pointing to its full write-up; its started items in the index, its done and dropped ones in History. Nothing enters without his decision | The state of the work in progress (`ACTIVE.md` holds it); what a session found and nobody chose |
 | `ATLAS.md` | The architecture map: each part of the repository, what it does, the files it works through, what it depends on, what checks it | A full file index |
 
 All five start with A so they are recognized and sorted together as one set.
@@ -121,7 +121,7 @@ ended by a line that says exactly:
 |---|---|---|
 | `ACTIVE.md` | 60 lines | Now (fixed fields), the work section when there is one, Pending, Debt, Next new work |
 | `ABILITIES.md` | 100 lines | Contract, status list, index (done rows may sit in a table below) |
-| `AHEAD.md` | 100 lines | Next up, milestones, index of open items |
+| `AHEAD.md` | 100 lines | Next up, milestones, index of open and started items |
 | `ATLAS.md` | 100 lines | The map table, the flow |
 
 Each of the four opens with its title and a one-line contract in a quotation
@@ -186,11 +186,38 @@ entered by the owner    ─► AHEAD (open, with its Entered line; a write-up in
 approved                ─► AHEAD (approved) + an ABILITIES index row (status planned) and its entry
 scheduled               ─► AHEAD (next), in the Next up queue
 started                 ─► ACTIVE current work, or a part of its work section; ABILITIES in progress;
-                           AHEAD (started), once, row moved to History; a plan in docs/plans/ when the
-                           work spans sessions
-done                    ─► ABILITIES done, with evidence; gone from ACTIVE; CHANGELOG at release
+                           AHEAD (started), once, row stays in the index; a plan in docs/plans/ when
+                           the work spans sessions
+done                    ─► AHEAD (done), its Done line, row moved to History; gone from ACTIVE;
+                           ABILITIES done, with evidence, when the ability is finished; CHANGELOG at release
 dropped                 ─► AHEAD (dropped), row moved to History, the entry says why
 ```
+
+**An item finishes on its own.** An item is `done` when its work is finished
+and nothing of the owner's waits on it; its ability is `done` when the ability
+is finished, which may take several items or none more. The main session
+writes it, without asking, in the work's own last commit: the state, the row
+moved to History, and a line in the entry:
+
+```markdown
+- **Done:** 2026-11-19, the reminder's journey test passes; work in 4f2a9c1 and 77d01be
+```
+
+The line starts with the date, then says how the work was checked, then names
+the work's commits when they will survive the merge, or else the work in
+words (the branch, the pull request); a proof in words alone counts, such as a
+setting changed outside the repository or the owner's confirmation with its
+date. It never says whether the work is merged: a Done line that is on the
+default branch got there with the merge. When what the work promised needs a
+step of the owner's after the merge (a publish, use cases only he sets to
+`Done`), the item stays `started` and its Done line goes in the commit that
+records his step. An item that spans parts of a work section is done when the
+parts that work on it are. A verified defect or a required check not run
+keeps it `started` (below, "The result asked for stays binding").
+
+**A fix** is an AHEAD item of kind `fix`: a planned repair. It names the
+ability it repairs, which may already be `done` and does not change, or no
+ability (`—`) when the repair is outside every listed ability.
 
 **The work section.** A task fits in Now. Work the owner commits to for days
 or weeks does not: a refactor in stages, a road to a release, a handful of
@@ -307,8 +334,9 @@ flows `A1`, `A2`.
 | `ABILITIES.md` | Status | `planned` (approved, not built), `in progress`, `done` (built, checked, evidence linked), `retired` (removed; the reason stays) |
 | `ABILITIES.md` | Specs (optional) | Use case identifiers (`UC-003`) or relative links to the specifications that define the ability; the check verifies that each link points at a file |
 | `ACTIVE.md`, `ABILITIES.md`, `AHEAD.md`, `ATLAS.md` | Home (optional, in the hot zone) | The tracking file kept as the home at adoption (never an A-file or a guideline file); the check verifies that it exists and no longer asks for the A-file's own fields, index, entries or map |
-| `AHEAD.md` | Kind | `idea`, `research`, `spike`, `proposal` |
-| `AHEAD.md` | State | `open`, `approved`, `next`, `started`, `dropped` |
+| `AHEAD.md` | Kind | `idea`, `research`, `spike`, `proposal`, `fix` (a planned repair) |
+| `AHEAD.md` | State | `open`, `approved`, `next`, `started` (rows in the index), `done`, `dropped` (rows in History) |
+| `AHEAD.md` | Done (in the entry) | For a `done` item: the date, how the work was checked, and the work's commits or the work in words (section 5) |
 | `AHEAD.md` | Entered (in the entry) | The owner's decision to keep the item: an ISO date, then his words or his request. The check looks for it on an item that is new since the last commit |
 
 **An item enters on the owner's decision.** An agent proposes an item, in its
@@ -328,7 +356,7 @@ his words. The check counts an identifier named there as present, and reports
 one that is used again. Where items are projected to issues, the removed
 item's issue closes as not planned.
 
-An AHEAD item that is `approved`, `next` or `started` names its ability. An
+An AHEAD item that is `approved`, `next` or `started` names its ability; a `fix` may name none. An
 ability's status is written once, in its index row: agents read the row at
 session start, and the row moves with the ability when done abilities sit
 below the hot zone. Entries carry no Status line. In a repository adopted
@@ -396,10 +424,28 @@ It reports:
   commit did not hold is new as a whole. This is a reminder at commit time,
   not proof: the check reads that the line is there, never its words, and an
   agent can write the line itself;
-- an AHEAD item that is approved, next or started without an ability, or an
-  item naming an ability that `ABILITIES.md` does not have, or naming one
-  when there is no `ABILITIES.md` (unless the file is already reported
-  missing or unreadable: one file, one finding).
+- an AHEAD item that is approved, next or started without an ability (a
+  `fix` aside), or an item naming an ability that `ABILITIES.md` does not
+  have, or naming one when there is no `ABILITIES.md` (unless the file is
+  already reported missing or unreadable: one file, one finding);
+- `DONE_WITHOUT_PROOF`: a `done` item whose entry has no Done line starting
+  with a calendar date;
+- `DONE_NOT_MERGED`: when the checked-out commit is the tip of the default
+  branch (origin's `HEAD`, else `main`, else `master`), a Done line that names
+  a commit (7 to 40 hexadecimal characters with a digit) this history does not
+  hold, as after a squash merge. Not tested on another branch, with no
+  default branch, or in a shallow clone;
+- `ABILITY_DONE_ITEM_OPEN`: a started item, not a `fix`, whose abilities are
+  all `done`;
+- `ITEMS_DONE_ABILITY_OPEN`: an ability `in progress` whose items (fixes
+  aside) are all done or dropped, and whose entry's **Next:** names no open,
+  approved, next or started item;
+- `ROW_OUT_OF_PLACE`: a started row in History, a done or dropped row in the
+  index, or a done or dropped item in Next up.
+
+Each of these five clears with one edit an agent can make: a Done line, a
+commit or words in it, a row moved, a state or a **Next:** written. None needs
+the network.
 
 **What it leaves alone.** The check says nothing about the length of `AGENTS.md`,
 about its sections, or about a missing end-of-hot-zone line in it. It does not
@@ -481,7 +527,10 @@ left unstaged is noted, not counted.
 
 **The agent hooks.** The plugin also carries two agent hooks (`hooks/`, run by
 `scripts/afiles_hook.py`): at session start, a note to state Finished,
-Remaining, Blocked by and Next step before the first edit; at the end of a turn,
+Remaining, Blocked by and Next step before the first edit, and, while
+`AHEAD.md` keeps started rows in History, a question for the owner about the
+finished-items sort, once per session and not for seven days after a
+`- Finished-items sort: not now, <YYYY-MM-DD>` line in ACTIVE's Pending; at the end of a turn,
 the check's findings, each once per session, as a note for the agent that asks
 nothing of the owner and never stops the work. They act only where `ACTIVE.md`
 carries the hot-zone marker. They are earlier feedback; the commit hook above

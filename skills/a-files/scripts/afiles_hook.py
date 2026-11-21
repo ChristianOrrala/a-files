@@ -13,6 +13,7 @@ Self-contained: standard library only. It runs check_tracking.py, which sits bes
 """
 import argparse
 import codecs
+import datetime
 import hashlib
 import json
 import os
@@ -21,7 +22,7 @@ import select
 import subprocess
 import sys
 
-A_FILES_VERSION = "2.2.2"
+A_FILES_VERSION = "2.3.0"
 MARKER = "<!-- hot zone ends -->"
 LIMIT = 3900
 MAX_FINDINGS = 5
@@ -42,6 +43,16 @@ STOP_HEAD = (
     "never as done with follow-ups. What you found and will not do now is written down where the work keeps its "
     "record, never as a new item in AHEAD.md: the owner decides what enters it."
 )
+ASKS_NOTHING = " This asks nothing of the owner."
+SORT_QUESTION = (
+    " This repository's AHEAD.md is at the old layout: %d started item%s in History. Ask the owner once whether to "
+    "run the finished-items sort now (the a-files skill's procedures). If he says not now, write in ACTIVE's Pending "
+    "the line `- Finished-items sort: not now, YYYY-MM-DD` with today's date."
+)
+# The not-now line in ACTIVE's Pending, and how long it keeps the question quiet.
+NOT_NOW = re.compile(r"^\s*-\s*Finished-items sort: not now, (\d{4}-\d{2}-\d{2})\b")
+QUIET_DAYS = 7
+SORT_KEY = "session-start|finished-items sort"
 FINDING = re.compile(r"^(?P<path>.+?):(?P<line>\d+): ERROR (?P<code>[A-Za-z0-9_-]+): (?P<message>.*)$")
 
 
@@ -78,6 +89,71 @@ def adopted(root):
             return MARKER in handle.read()
     except OSError:
         return False
+
+
+def read_lines(path):
+    """The file's lines outside fenced blocks, or [] when it cannot be read."""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            lines = handle.read().split("\n")
+    except OSError:
+        return []
+    kept, fence = [], None
+    for line in lines:
+        mark = re.match(r"^\s*(`{3,}|~{3,})", line)
+        if mark and (fence is None or mark.group(1)[0] == fence[0] and len(mark.group(1)) >= len(fence)):
+            fence = None if fence else mark.group(1)
+            continue
+        if fence is None:
+            kept.append(line)
+    return kept
+
+
+def section(lines, name):
+    """The lines under `## <name>` up to the next `## ` heading."""
+    out, inside = [], False
+    for line in lines:
+        if line.startswith("## "):
+            inside = line[3:].strip().lower().startswith(name)
+            continue
+        if inside:
+            out.append(line)
+    return out
+
+
+def started_in_history(root):
+    """How many AHEAD rows in History are still `started`: the layout before items could be done."""
+    count = 0
+    for line in section(read_lines(os.path.join(root, "AHEAD.md")), "history"):
+        cells = [c.strip().strip("`") for c in line.strip().strip("|").split("|")]
+        if len(cells) >= 4 and re.fullmatch(r"AH-\d{3}", cells[0]) and cells[3] == "started":
+            count += 1
+    return count
+
+
+def quiet_until_not_now(root, today=None):
+    """True while ACTIVE's Pending holds a not-now line younger than seven days."""
+    today = today or datetime.date.today()
+    for line in section(read_lines(os.path.join(root, "ACTIVE.md")), "pending"):
+        match = NOT_NOW.match(line)
+        if match:
+            try:
+                said = datetime.date.fromisoformat(match.group(1))
+            except ValueError:
+                continue
+            if (today - said).days < QUIET_DAYS:
+                return True
+    return False
+
+
+def session_note(root, session):
+    """The note at session start; at the old layout it asks about the sort, once per session."""
+    count = started_in_history(root)
+    if not count or quiet_until_not_now(root):
+        return SESSION_NOTE
+    if session and not new_findings(root, session, [("AHEAD.md", "SORT", SORT_KEY, "")]):
+        return SESSION_NOTE
+    return SESSION_NOTE[:-len(ASKS_NOTHING)] + SORT_QUESTION % (count, "" if count == 1 else "s")
 
 
 def cap(text):
@@ -185,7 +261,8 @@ def run(moment, kind):
     if not root or not adopted(root):
         return 0
     if moment == "session-start":
-        return emit(moment, kind, cap(SESSION_NOTE))
+        session = str(event.get("session_id") or event.get("sessionId") or "")
+        return emit(moment, kind, cap(session_note(root, session)))
     if event.get("stop_hook_active") is True:
         return 0
     findings = parse_findings(run_check(root))

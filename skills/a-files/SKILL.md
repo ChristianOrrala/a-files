@@ -2,15 +2,15 @@
 name: a-files
 description: >-
   Use when the user wants to adopt the A-files, set up or clean up the files agents read at session
-  start, close out a piece of work, promote or schedule an item, sort a full AHEAD, review an
-  AGENTS.md, fix what the tracking check reports, link abilities to a spec-driven method's
+  start, close out a piece of work, promote or schedule an item, sort a full AHEAD or its
+  finished items, review an AGENTS.md, fix what the tracking check reports, link abilities to a spec-driven method's
   specifications in the same project, or project AHEAD to GitHub issues. Adopts and keeps the
-  A-files, five Markdown files at a repository's root that every coding agent reads first: AGENTS.md
+  A-files, five Markdown files at a repository's root that agents read first: AGENTS.md
   (rules, warm-up, index), ACTIVE.md (the work in progress), ABILITIES.md (what the product can do),
   AHEAD.md (what the owner chose to plan) and ATLAS.md (the architecture map), with a keep-in-step
   rule and a check that reports at commit time what breaks their shape, never refusing the commit.
   Maps existing tracking files (a board, a feature list, a roadmap, notes), asks whether to move
-  them into the A-files or keep them, and checks every link, import and instruction that names what
+  them into the A-files or keep them, and checks every link and instruction that names what
   moves. Not for writing specifications; not an issue tracker.
 ---
 
@@ -89,7 +89,9 @@ In the same commit as the last change of the work:
 - `ABILITIES.md`: when the ability itself is finished, it becomes `done` in its index row (the status lives there
   only), with **Evidence** linking the specification, tests or evaluation, and **Known limits** stated. While a part
   of it remains, it stays `in progress` and its entry gains the finished part's evidence. An old Status line follows.
-- `AHEAD.md`: an item that ended moves to History; an item the owner made from a finding gets its **Entered** line.
+- `AHEAD.md`: an item whose work is finished, with nothing of the owner's waiting on it, becomes `done`: its **Done**
+  line (the date, how it was checked, the work's commits or the work in words; never its merge status) and its row
+  moved to History, in this same commit. An item the owner made from a finding gets its **Entered** line.
 - `ATLAS.md`, when a part was added, moved or removed.
 - A decision record for any standing rule the work produced.
 - With the projection to issues ([scripts/project_issues.py](scripts/project_issues.py)), align with them first ([references/issues.md](references/issues.md)).
@@ -97,9 +99,9 @@ In the same commit as the last change of the work:
 ## Promote an item
 
 An item enters `AHEAD.md` on the owner's decision: propose it, and write the row, with its **Entered** line, only when
-he asks or says yes. Items then move `open` → `approved` → `next` → `started`. On approval the ability gets its index
+he asks or says yes. Items then move `open` → `approved` → `next` → `started` → `done`. On approval the ability gets its index
 row in `ABILITIES.md`, with status `planned`, and its entry, and the item names it. When work on it starts, the item
-goes to History as `started`, once, the ability becomes `in progress`, `ACTIVE.md` names the work, and a plan goes
+becomes `started`, once, its row staying in the index, the ability becomes `in progress`, `ACTIVE.md` names the work, and a plan goes
 into `docs/plans/` when the work spans sessions. Work the owner commits to for days or weeks gets a work section in
 `ACTIVE.md`; if it has to wait it stays there, and nothing else starts until he says so. With no work section,
 `ACTIVE.md` holds one current piece of work: work that is blocked moves to Pending or back to AHEAD, and it never
@@ -110,6 +112,16 @@ holds up unrelated work, which can then start.
 For an `AHEAD.md` full of items the owner never chose. The owner starts it. No session starts it on its own. Propose
 keep, join, do now or remove for every open item, all at once. The owner rules on the list; one commit applies it,
 and kept items gain their **Entered** line. The steps: [references/owner-procedures.md](references/owner-procedures.md).
+
+## Sort the finished items
+
+For an `AHEAD.md` at the layout before items could be done: `started` rows in History, which the check reports as
+`ROW_OUT_OF_PLACE`; the session-start hook asks the owner about it. The owner starts it. No session starts it on its
+own. For each started item, propose done, with its proof for the Done line (an old Ended or Done line, its
+abilities' evidence, the code, git and tests), or still started, with the reason; name the issues that would close.
+The owner rules on the list; one commit applies it: the Done lines, the rows placed, the old lines converted. When
+he says not now, write `- Finished-items sort: not now, <YYYY-MM-DD>` in ACTIVE's Pending; the hook asks again after
+seven days. The steps: [references/owner-procedures.md](references/owner-procedures.md).
 
 ## Review AGENTS.md
 
@@ -175,6 +187,11 @@ changes the exit code.
 | `REMOVED_ID` | Restore the identifier; retire or drop the item instead of deleting it. An item the owner had removed is named in History's line `Removed on the owner's word:` |
 | `NO_ABILITY`, `UNKNOWN_ABILITY`, `UNKNOWN_ITEM` | Name an existing ability on the item; list only indexed items in Next up; in `ACTIVE.md`, name only identifiers the registers have |
 | `ITEM_WITHOUT_DECISION` | A new AHEAD item has no `- **Entered:** <date>, <the owner's words>` line. If the owner asked for the item, add the line; if he did not, take the item out and propose it to him instead |
+| `DONE_WITHOUT_PROOF` | Give the done item its `- **Done:** <YYYY-MM-DD>, <how it was checked, the work's commits or the work in words>` line; if the work is not finished, it stays `started` |
+| `DONE_NOT_MERGED` | The Done line names a commit the default branch does not hold (a squash merge, a typo): name the commit that reached it, or name the work in words |
+| `ABILITY_DONE_ITEM_OPEN` | The item's abilities are all done: mark it done with its Done line (a proof in words, such as the owner's confirmation, counts), drop it, or return an ability to `in progress` |
+| `ITEMS_DONE_ABILITY_OPEN` | Every item of the ability closed: mark it done (with its evidence) or retired, or name in its **Next:** the item that continues it |
+| `ROW_OUT_OF_PLACE` | Open, approved, next and started rows sit in the index; done and dropped rows in History; Next up holds no closed item. Move the row; a repository at the old layout runs the finished-items sort |
 
 Never silence the check, and never delete an identifier to make it pass.
 

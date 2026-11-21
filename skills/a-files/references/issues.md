@@ -22,7 +22,7 @@ an issue it keeps is closed or reopened on GitHub, the workflow runs
 by a hidden marker; its title, its `kind:` and `state:` labels and the part of
 the body between its markers are the projection's, the rest is people's. An
 issue closes as not planned when its item is dropped and as completed when its
-item's ability is `done`. The script never writes an A-file, never deletes an
+item is `done`; its ability's status does not decide. The script never writes an A-file, never deletes an
 issue, and never overwrites a change made on GitHub: it labels the issue
 `a-files: out of step` and comments once. `python3 tools/project_issues.py`
 alone is a dry run.

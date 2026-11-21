@@ -17,7 +17,7 @@ the title, the labels `a-files`, `kind: <kind>` and `state: <state>`, and the pa
 part the script keeps one hidden line, `<!-- a-files:last: open|closed -->`: the state it last set.
 
 Open or closed, as the A-files say: closed as not planned when the item is `dropped` or removed, closed as completed when the
-item's ability (the first AB-NNN of its Ability column) is `done`, open otherwise (a `started` item stays open).
+item is `done`, open otherwise (a `started` item stays open, whatever its abilities say).
 A change made on GitHub is never overwritten: when an issue's state differs from what the A-files say and is not the
 state the script last set, the issue is labelled `a-files: out of step` and commented once, and its state is left
 alone. `--report` lists those for an agent to align with the owner; `--keep-a-files AH-NNN` and `--accept-github
@@ -209,8 +209,8 @@ def desired(f):
         return "closed", "not planned", "AHEAD says dropped"
     if f["state"] == REMOVED:
         return "closed", "not planned", "AHEAD says removed on the owner's word"
-    if f["ability_status"] == "done":
-        return "closed", "completed", "AHEAD says %s, ABILITIES says %s is done" % (f["state"], f["ability"])
+    if f["state"] == "done":
+        return "closed", "completed", "AHEAD says done"
     return "open", None, "AHEAD says %s" % f["state"]
 
 
@@ -385,7 +385,7 @@ def plan_item(f, issue, ctx, decision=None):
     if add or remove:
         changes.append("labels")
     if decision == "keep" and (flagged or transition):
-        comment = ("%s: the owner kept the A-files' state. This issue is %s, as AHEAD.md and ABILITIES.md say."
+        comment = ("%s: the owner kept the A-files' state. This issue is %s, as AHEAD.md says."
                    % (f["id"], want if not reason else "%s (%s)" % (want, reason)))
     flagging = out_now and not flagged
     if not (transition or changes or comment):
@@ -419,7 +419,7 @@ def plan(facts_list, by_id, ctx, include_open, decisions):
         if issue is None:
             if f["state"] not in selected or desired(f)[0] == "closed":
                 continue                        # never an issue for a dropped item, nor a closed one for finished work
-        elif f["state"] not in selected and f["state"] not in ("dropped", REMOVED) and not decisions:
+        elif f["state"] not in selected and f["state"] not in ("done", "dropped", REMOVED) and not decisions:
             continue
         action, mismatch = plan_item(f, issue, ctx, decisions.get(f["id"]))
         if mismatch:
@@ -564,7 +564,7 @@ def run(args):
         if decision == "accept" and by_id[identifier]["state"].lower() != want:
             # Taking GitHub's version is the A-files' change first: accepted before it, the next run would read the
             # A-files' older state as a change of theirs and undo the owner's answer.
-            print("%s: the A-files still say the issue should be %s; update AHEAD.md or ABILITIES.md to GitHub's "
+            print("%s: the A-files still say the issue should be %s; update AHEAD.md to GitHub's "
                   "version first, then accept it" % (identifier, want), file=sys.stderr)
             return 2
     ref, prefix = git_ref(root, args.ref)

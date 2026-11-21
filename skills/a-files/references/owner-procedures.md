@@ -1,6 +1,6 @@
-# Two procedures the owner starts
+# Three procedures the owner starts
 
-Both change files the owner reads to decide what happens next, so neither is
+Each changes files the owner reads to decide what happens next, so none is
 run by a session on its own, and nothing moves before he has ruled on the
 whole list. The rules behind them are in the method guide, sections 2, 5 and 6.
 
@@ -22,6 +22,33 @@ For an `AHEAD.md` that filled up with items the owner never chose.
    owner's word:` with the identifiers, the date and his words; its number
    stays used. Items to do now become the current work in `ACTIVE.md`, in a
    work section when they are several.
+
+## Sort the finished items
+
+For an `AHEAD.md` at the layout before items could be done: `started` rows in
+History (a-files 2.2 and earlier), which the check reports as
+`ROW_OUT_OF_PLACE`. It brings the repository to the one layout the method
+knows; nothing keeps the old one passing.
+
+1. The owner starts it. No session starts it on its own: at the old layout the
+   session-start hook asks the agent to ask him once. When he says not now,
+   write `- Finished-items sort: not now, <YYYY-MM-DD>` in ACTIVE's Pending;
+   the hook stays quiet for seven days, then asks again.
+2. Read every `started` item and propose one of two for each, all at once:
+   - **done**, with its Done line: the date the work finished, how it was
+     checked, and the work's commits or the work in words. An item whose
+     abilities are all `done` is proposed done with their evidence; an old
+     `Ended:` or `Done:` line the project invented gives the date and the
+     words. Otherwise read the code, git and the tests;
+   - **still started**, with the reason and what is missing.
+
+   Name the issues that would close, where items are projected to issues.
+3. The owner rules on the list. He may change any line. Nothing moves before
+   that.
+4. One commit applies it: each done item's state, its Done line (replacing an
+   old Ended or Done line) and its row in History; each still-started row back
+   in the index; the not-now line, if any, removed. The check then passes the
+   rows, and the projection, when it is on, closes the finished items' issues.
 
 ## Review AGENTS.md
 

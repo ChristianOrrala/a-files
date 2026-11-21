@@ -2,6 +2,19 @@
 
 All notable changes to the A-files. Versions follow semantic versioning.
 
+## 2.3.0 (2026-11-20)
+
+An AHEAD item can be done. Until now only an ability could be finished, so an item that shared an ability, waited on a long-lived one or repaired a finished one stayed `started` for good, and agents had to check code and git to learn what was finished.
+
+- **The `done` state.** An item becomes `done` when its work is finished and nothing of the owner's waits on it, written by the main session in the work's own last commit. Its entry gains a **Done** line: the date, how the work was checked, and the work's commits when they survive the merge, or the work in words. The line never states a merge status. When the owner still has a step after the merge (a publish, an acceptance), the item stays `started` and the line goes in the commit that records his step.
+- **Rows sit by whether the work is live.** Open, approved, next and started rows are in AHEAD's index; done and dropped rows in History. AHEAD's contract line now reads "What the owner chose to plan, and what is under way from it".
+- **The `fix` kind** for a planned repair. It names the ability it repairs, which may already be done and does not change, or none.
+- **Five new problems, each cleared by one edit:** `DONE_WITHOUT_PROOF` (a done item without a dated Done line), `DONE_NOT_MERGED` (on the tip of the default branch, a Done line naming a commit its history does not hold, as after a squash merge), `ABILITY_DONE_ITEM_OPEN` (a started item, not a fix, whose abilities are all done), `ITEMS_DONE_ABILITY_OPEN` (an ability in progress whose items are all closed and whose Next names no live item) and `ROW_OUT_OF_PLACE`. The merge test needs no network; with no default branch or in a shallow clone it is skipped. The JSON output gives each item's Done line, its commits and whether they were verified.
+- **Issues close on the item.** An issue closes as completed when its item is `done`; its ability no longer decides.
+- **The finished-items sort.** A third procedure the owner starts brings a repository from the old layout (started rows in History) to the new one: one list, done with proof or still started with the reason, his approval, one commit. The session-start hook asks the agent to ask him about it while the old layout remains, once per session, and keeps quiet for seven days after a `- Finished-items sort: not now, <date>` line in ACTIVE's Pending.
+
+Upgrading: a repository at the old layout gets `ROW_OUT_OF_PLACE` for each started row in History until the sort runs. An installed check older than 2.3.0 reports `done` and `fix` as values outside its lists; upgrade it with the skill.
+
 ## 2.2.2 (2026-11-19)
 
 Fixes found by a static check of the skill (NVIDIA SkillEvaluator, Tier 1).

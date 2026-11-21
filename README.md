@@ -16,7 +16,7 @@ team that needs assignments and reviews keeps an issue tracker beside them.
 A project on GitHub may also project AHEAD's actionable items to issues, so
 the tools that read issues see them; AHEAD stays the source of truth.
 
-**Version 2.2.2.**
+**Version 2.3.0.**
 
 ## The five files
 
@@ -91,7 +91,7 @@ Then approve each hook once in Codex's `/hooks`.
 Kiro CLI and OpenCode run the plugin from a full copy, kept in one place:
 
 ```sh
-git clone --branch v2.2.2 https://github.com/ChristianOrrala/a-files.git ~/.local/share/agent-plugins/a-files
+git clone --branch v2.3.0 https://github.com/ChristianOrrala/a-files.git ~/.local/share/agent-plugins/a-files
 ```
 
 - **Kiro CLI:** link the copy's `skills/a-files` folder as
@@ -173,7 +173,7 @@ After each push that changes `AHEAD.md` or `ABILITIES.md`, and when one of its
 issues is closed or reopened on GitHub, the workflow keeps
 one issue per item: its title, its `kind:` and `state:` labels and a marked
 part of its body; the rest of the issue is yours. Issues close as not planned
-when an item is dropped and as completed when its ability is done. Nothing is
+when an item is dropped and as completed when the item is done. Nothing is
 written to the A-files, nothing is deleted, and nothing leaves your machine
 before you push. A change made on GitHub (a pull request that closes an issue,
 a board rule) is never overwritten: the issue is labelled

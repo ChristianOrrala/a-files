@@ -1,6 +1,6 @@
 # AHEAD — Repair Desk
 
-> What the owner chose to plan: what comes next, milestones, ideas, research, spikes and proposals. Nothing here is in progress, and nothing enters without his decision.
+> What the owner chose to plan, and what is under way from it: what comes next, milestones, ideas, research, spikes and proposals. Nothing enters without his decision.
 
 ## Next up
 
@@ -18,8 +18,9 @@
 |---|---|---|---|---|---|
 | AH-001 | Gift vouchers online | idea | open | AB-002 | — |
 | AH-002 | Remind the customer by text the day before | proposal | next | AB-004 | [research 01](docs/research/01-sms-providers.md) |
+| AH-003 | Cancel a booking | proposal | started | AB-003 | — |
 
-Kind: `idea`, `research`, `spike`, `proposal`. State: `open`, `approved`, `next`, `started`, `dropped`.
+Kind: `idea`, `research`, `spike`, `proposal`, `fix`. State: `open`, `approved`, `next`, `started`, `done`, `dropped`.
 
 Below: Items, History, How to maintain this file.
 
@@ -58,13 +59,22 @@ Below: Items, History, How to maintain this file.
 - **Entered:** 2026-09-10, the owner: "note the points idea"
 - **Decided:** dropped 2026-09-15 by the owner: the workshop prefers fair prices to points.
 
+### AH-005 Two bookings for the same slot
+
+- **What:** two customers who book the last slot at the same moment both get it; the second is refused.
+- **Why:** it happened twice in October (AB-001).
+- **Write-up:** none
+- **Entered:** 2026-10-20, the owner: "fix the double booking"
+- **Decided:** approved 2026-10-20 by the owner.
+- **Done:** 2026-10-24, a test books the last slot twice at once and the second is refused; work on the branch `fix/same-slot`
+
 ## History
 
-Started and dropped items, moved here from the index so the hot zone stays short.
+Done and dropped items, moved here from the index so the hot zone stays short.
 
 | ID | Title | Kind | State | Ability | Write-up |
 |---|---|---|---|---|---|
-| AH-003 | Cancel a booking | proposal | started | AB-003 | — |
+| AH-005 | Two bookings for the same slot | fix | done | AB-001 | — |
 | AH-004 | Loyalty points | idea | dropped | — | — |
 
 ## How to maintain this file
@@ -80,9 +90,13 @@ Started and dropped items, moved here from the index so the hot zone stays short
   keeps its record, never here; the owner rules on it when the work closes.
 - **Approved:** state `approved`, and the ability gets its row in
   `ABILITIES.md` (status `planned`) and its entry. **Scheduled:** state
-  `next`, in Next up. **Started:** state `started`, the row moves to History,
-  the work appears in `ACTIVE.md`.
-  **Dropped:** state `dropped`, the row moves to History, the entry says why.
+  `next`, in Next up. **Started:** state `started`, the row stays in the
+  index, the work appears in `ACTIVE.md`. **Done:** state `done`, a **Done**
+  line in the entry (the date, how it was checked, the work's commits or the
+  work in words), the row moves to History. **Dropped:** state `dropped`, the
+  row moves to History, the entry says why.
+- A `fix` is a planned repair: it names the ability it repairs, which may be
+  done, or none.
 - **Removed:** an item the owner never chose goes on his word only. Its row
   and its entry are deleted, its number stays used, and History gains one
   line: `Removed on the owner's word: AH-0xx, <YYYY-MM-DD>, "<his words>"`
